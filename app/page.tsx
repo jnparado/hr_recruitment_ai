@@ -1,6 +1,29 @@
 import Link from "next/link";
 
+const pipelineSteps = [
+  "Resume Received",
+  "AI Extracts",
+  "Matches Jobs",
+  "Ranks Candidates",
+  "Schedules Interviews",
+  "Recruiter Report",
+];
+
 const features = [
+  {
+    href: "/pipeline",
+    title: "Recruitment Pipeline",
+    description:
+      "The full hiring workflow in one run — from resume intake through extraction, job matching, ranking, interview scheduling, and a recruiter report.",
+    bullets: [
+      "Extract skills, experience & certificates",
+      "Match & rank against job openings",
+      "Auto-schedule qualified candidates",
+      "Generate executive recruiter report",
+    ],
+    cta: "Run pipeline",
+    primary: true,
+  },
   {
     href: "/screening",
     title: "AI Resume Screening",
@@ -13,8 +36,8 @@ const features = [
     href: "/interview",
     title: "AI Interview Assistant",
     description:
-      "Grok conducts the first screening interview — one question at a time — then delivers a candidate score and a clear hire recommendation.",
-    bullets: ["Experience & skills deep-dive", "Salary expectations", "Availability & notice period", "Score + advance/reject call"],
+      "Grok conducts the first screening interview by voice or text — one question at a time — then delivers a candidate score and a clear hire recommendation.",
+    bullets: ["Real voice interviews (Grok TTS + STT)", "Experience & skills deep-dive", "Salary expectations & availability", "Score + advance/reject call"],
     cta: "Start an interview",
   },
 ];
@@ -36,16 +59,45 @@ export default function Home() {
           Recruitment on autopilot
         </h1>
         <p className="mt-4 text-lg text-slate-600">
-          HR Process screens resumes, ranks candidates, and runs first-round
-          interviews — so your team only spends time on the people worth meeting.
+          HR Process runs the full hiring pipeline — receive resumes, extract credentials,
+          match jobs, rank candidates, schedule interviews, and deliver recruiter reports.
         </p>
+        <Link
+          href="/pipeline"
+          className="mt-6 inline-flex items-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
+        >
+          Start recruitment pipeline →
+        </Link>
       </section>
 
-      <section className="mt-14 grid gap-6 md:grid-cols-2">
+      {/* Pipeline flow */}
+      <section className="mt-14">
+        <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-slate-500">
+          How it works
+        </h2>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
+          {pipelineSteps.map((step, i) => (
+            <span key={step} className="flex items-center gap-2">
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm">
+                {step}
+              </span>
+              {i < pipelineSteps.length - 1 && (
+                <span className="text-slate-300">↓</span>
+              )}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-14 grid gap-6 md:grid-cols-3">
         {features.map((f) => (
           <div
             key={f.href}
-            className="flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:shadow-md"
+            className={`flex flex-col rounded-2xl border p-7 shadow-sm transition hover:shadow-md ${
+              f.primary
+                ? "border-indigo-300 bg-gradient-to-br from-indigo-50 to-white ring-1 ring-indigo-200"
+                : "border-slate-200 bg-white"
+            }`}
           >
             <h2 className="text-xl font-semibold text-slate-900">{f.title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{f.description}</p>
@@ -59,7 +111,11 @@ export default function Home() {
             </ul>
             <Link
               href={f.href}
-              className="mt-6 inline-flex w-fit items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+              className={`mt-6 inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                f.primary
+                  ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                  : "border border-slate-300 text-slate-700 hover:bg-slate-50"
+              }`}
             >
               {f.cta} →
             </Link>

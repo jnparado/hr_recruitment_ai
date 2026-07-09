@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { StorageLink } from "@/app/_components/StorageLink";
 import type { ScreeningResult } from "@/lib/types";
 
 const recommendationStyles: Record<
@@ -190,6 +191,9 @@ export default function ScreeningPage() {
                               .filter(Boolean)
                               .join(" · ") || r.fileName}
                           </p>
+                          <div className="mt-1.5">
+                            <StorageLink url={r.storageUrl} />
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">

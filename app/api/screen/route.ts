@@ -1,5 +1,6 @@
 import { grokJson } from "@/lib/grok";
 import { extractResumeText } from "@/lib/extract";
+import { storageForFile, uploadResumes } from "@/lib/storage";
 import type { ScreeningResult } from "@/lib/types";
 
 export const maxDuration = 300;
@@ -47,15 +48,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "Maximum 10 resumes per batch." }, { status: 400 });
   }
 
+  const stored = await uploadResumes(files);
+
   const results: ScreeningResult[] = await Promise.all(
     files.map(async (file): Promise<ScreeningResult> => {
+      const storage = storageForFile(stored, file.name);
       try {
         const resumeText = await extractResumeText(file);
-        const analysis = await grokJson<Omit<ScreeningResult, "fileName">>(
+        const analysis = await grokJson<Omit<ScreeningResult, "fileName" | "storagePath" | "storageUrl">>(
           SYSTEM_PROMPT,
           `JOB DESCRIPTION:\n${jobDescription}\n\nRESUME (${file.name}):\n${resumeText}`
         );
-        return { ...analysis, fileName: file.name };
+        return { ...analysis, fileName: file.name, ...storage };
       } catch (err) {
         return {
           fileName: file.name,
@@ -69,6 +73,7 @@ export async function POST(request: Request) {
           matchedSkills: [],
           skillGaps: [],
           strengths: [],
+          ...storage,
           error: err instanceof Error ? err.message : "Failed to analyze this resume.",
         };
       }

@@ -40,16 +40,22 @@ export default function RootLayout({
             </Link>
             <nav className="flex items-center gap-1 text-sm font-medium text-slate-600">
               <Link
+                href="/pipeline"
+                className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                Pipeline
+              </Link>
+              <Link
                 href="/screening"
                 className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
               >
-                Resume Screening
+                Screening
               </Link>
               <Link
                 href="/interview"
                 className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
               >
-                Interview Assistant
+                Interview
               </Link>
             </nav>
           </div>

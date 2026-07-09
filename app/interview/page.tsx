@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { MicRecorder } from "@/lib/audio";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
 type Phase = "setup" | "chat" | "evaluating" | "report";
+type VoiceState = "idle" | "speaking" | "recording" | "transcribing";
 
 const recStyles: Record<InterviewEvaluation["recommendation"], { label: string; className: string }> = {
   advance: { label: "Advance to next round", className: "bg-emerald-100 text-emerald-800" },
@@ -18,10 +21,23 @@ function scoreColor(score: number) {
 }
 
 export default function InterviewPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-slate-500">Loading…</div>
+      }
+    >
+      <InterviewContent />
+    </Suspense>
+  );
+}
+
+function InterviewContent() {
+  const searchParams = useSearchParams();
   const [phase, setPhase] = useState<Phase>("setup");
   const [setup, setSetup] = useState<InterviewSetup>({
-    candidateName: "",
-    jobTitle: "",
+    candidateName: searchParams.get("candidate") || "",
+    jobTitle: searchParams.get("job") || "",
     jobDescription: "",
   });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -29,11 +45,100 @@ export default function InterviewPage() {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(null);
+  const [voiceMode, setVoiceMode] = useState(true);
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MicRecorder | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, thinking]);
+  }, [messages, thinking, voiceState]);
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+    };
+  }, []);
+
+  function stopSpeaking() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setVoiceState((s) => (s === "speaking" ? "idle" : s));
+  }
+
+  async function speak(text: string) {
+    if (!voiceMode) return;
+    try {
+      setVoiceState("speaking");
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Text-to-speech failed.");
+      }
+      const url = URL.createObjectURL(await res.blob());
+      await new Promise<void>((resolve) => {
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => resolve();
+        audio.onpause = () => resolve();
+        audio.onerror = () => resolve();
+        void audio.play().catch(() => resolve());
+      });
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Text-to-speech failed.");
+    } finally {
+      audioRef.current = null;
+      setVoiceState((s) => (s === "speaking" ? "idle" : s));
+    }
+  }
+
+  async function toggleRecording() {
+    if (voiceState === "recording") {
+      const recorder = recorderRef.current;
+      recorderRef.current = null;
+      if (!recorder) return;
+      setVoiceState("transcribing");
+      try {
+        const wav = await recorder.stop();
+        const form = new FormData();
+        form.append("audio", new File([wav], "answer.wav", { type: "audio/wav" }));
+        const res = await fetch("/api/stt", { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Transcription failed.");
+        if (!data.text) {
+          setError("No speech detected — try recording again or type your answer.");
+          return;
+        }
+        const updated: ChatMessage[] = [...messages, { role: "user", content: data.text }];
+        setMessages(updated);
+        void fetchNext(updated);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Transcription failed.");
+      } finally {
+        setVoiceState((s) => (s === "transcribing" ? "idle" : s));
+      }
+      return;
+    }
+
+    stopSpeaking();
+    setError(null);
+    try {
+      const recorder = new MicRecorder();
+      await recorder.start();
+      recorderRef.current = recorder;
+      setVoiceState("recording");
+    } catch {
+      setError("Microphone access was denied. Allow mic access or type your answer instead.");
+    }
+  }
 
   async function fetchNext(history: ChatMessage[]): Promise<void> {
     setThinking(true);
@@ -48,6 +153,8 @@ export default function InterviewPage() {
       if (!res.ok) throw new Error(data.error || "Interview request failed.");
       const updated: ChatMessage[] = [...history, { role: "assistant", content: data.message }];
       setMessages(updated);
+      setThinking(false);
+      await speak(data.message);
       if (data.done) await evaluate(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -84,6 +191,7 @@ export default function InterviewPage() {
   function sendAnswer() {
     const text = input.trim();
     if (!text || thinking) return;
+    stopSpeaking();
     setInput("");
     const updated: ChatMessage[] = [...messages, { role: "user", content: text }];
     setMessages(updated);
@@ -91,19 +199,21 @@ export default function InterviewPage() {
   }
 
   function reset() {
+    stopSpeaking();
     setPhase("setup");
     setMessages([]);
     setEvaluation(null);
     setError(null);
+    setVoiceState("idle");
   }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">AI Interview Assistant</h1>
       <p className="mt-2 text-slate-600">
-        Grok runs the first screening interview — experience, skills, salary
-        expectations, and availability — then scores the candidate with a hire
-        recommendation.
+        Grok runs the first screening interview by voice or text — experience,
+        skills, salary expectations, and availability — then scores the candidate
+        with a hire recommendation.
       </p>
 
       {error && (
@@ -148,12 +258,29 @@ export default function InterviewPage() {
               className="mt-2 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
           </div>
+          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <input
+              type="checkbox"
+              checked={voiceMode}
+              onChange={(e) => setVoiceMode(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-indigo-600"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">
+                Voice interview
+              </span>
+              <span className="block text-xs text-slate-500">
+                Grok speaks each question aloud and the candidate answers by voice
+                (requires microphone). You can still type answers at any time.
+              </span>
+            </span>
+          </label>
           <button
             onClick={startInterview}
             disabled={!setup.jobTitle.trim()}
             className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            Start interview
+            {voiceMode ? "Start voice interview" : "Start interview"}
           </button>
         </div>
       )}
@@ -203,6 +330,24 @@ export default function InterviewPage() {
                 </span>
               </div>
             )}
+            {voiceState === "speaking" && (
+              <button
+                onClick={stopSpeaking}
+                className="flex items-center gap-2 self-start rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-600" />
+                </span>
+                Grok is speaking — click to skip
+              </button>
+            )}
+            {voiceState === "transcribing" && (
+              <div className="flex items-center gap-2 self-end rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
+                Transcribing your answer…
+              </div>
+            )}
             {phase === "evaluating" && (
               <div className="self-center py-4 text-sm text-slate-500">
                 Interview complete — Grok is scoring the candidate…
@@ -213,6 +358,27 @@ export default function InterviewPage() {
 
           {phase === "chat" && (
             <div className="flex gap-2 border-t border-slate-200 p-4">
+              {voiceMode && (
+                <button
+                  onClick={toggleRecording}
+                  disabled={thinking || voiceState === "transcribing"}
+                  title={voiceState === "recording" ? "Stop recording" : "Record your answer"}
+                  className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center self-end rounded-xl text-white transition disabled:cursor-not-allowed disabled:bg-slate-300 ${
+                    voiceState === "recording"
+                      ? "animate-pulse bg-rose-600 hover:bg-rose-500"
+                      : "bg-slate-900 hover:bg-slate-700"
+                  }`}
+                >
+                  {voiceState === "recording" ? (
+                    <span className="h-3.5 w-3.5 rounded-sm bg-white" />
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                      <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z" />
+                      <path d="M18 11a1 1 0 1 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.92V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.08A6 6 0 0 0 18 11z" />
+                    </svg>
+                  )}
+                </button>
+              )}
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -223,12 +389,18 @@ export default function InterviewPage() {
                   }
                 }}
                 rows={2}
-                placeholder="Type the candidate's answer… (Enter to send)"
+                placeholder={
+                  voiceState === "recording"
+                    ? "Recording… click the stop button when you finish speaking"
+                    : voiceMode
+                      ? "Speak with the mic button, or type the answer… (Enter to send)"
+                      : "Type the candidate's answer… (Enter to send)"
+                }
                 className="flex-1 resize-none rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
               <button
                 onClick={sendAnswer}
-                disabled={thinking || !input.trim()}
+                disabled={thinking || !input.trim() || voiceState === "recording"}
                 className="self-end rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 Send
