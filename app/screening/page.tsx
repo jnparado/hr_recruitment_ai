@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
 import { StorageLink } from "@/app/_components/StorageLink";
 import type { ScreeningResult } from "@/lib/types";
 
@@ -72,6 +73,13 @@ export default function ScreeningPage() {
         Paste a job description, upload up to 10 resumes, and Cursor will rank every
         candidate with match scores, matched skills, and skill gaps.
       </p>
+
+      <div className="mt-6">
+        <RecruiterFlowDiagram
+          activeStep={results ? "Ranks Candidates" : loading ? "AI Extracts" : "Resume Received"}
+          variant="compact"
+        />
+      </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import {
+  RecruiterFlowDiagram,
+  pipelineStageToStep,
+} from "@/app/_components/RecruiterFlowDiagram";
 import { StorageLink } from "@/app/_components/StorageLink";
 import type {
   ExtractedResume,
@@ -11,66 +15,11 @@ import type {
   RecruiterReport,
 } from "@/lib/types";
 
-const PIPELINE_STEPS: { id: PipelineStage; label: string; desc: string }[] = [
-  { id: "received", label: "Resume Received", desc: "Upload candidate resumes" },
-  { id: "extracting", label: "AI Extracts", desc: "Skills · Experience · Certificates" },
-  { id: "matching", label: "Matches Jobs", desc: "Score fit against openings" },
-  { id: "ranking", label: "Ranks Candidates", desc: "Order by best match" },
-  { id: "scheduling", label: "Schedules Interviews", desc: "Propose interview slots" },
-  { id: "report", label: "Recruiter Report", desc: "Executive summary & actions" },
-];
-
 function scoreColor(score: number) {
   if (score >= 85) return "text-emerald-600";
   if (score >= 70) return "text-sky-600";
   if (score >= 50) return "text-amber-600";
   return "text-rose-600";
-}
-
-function StepIndicator({ current, done }: { current: PipelineStage; done: boolean }) {
-  const order = PIPELINE_STEPS.map((s) => s.id);
-  const currentIdx = done ? order.length : order.indexOf(current);
-
-  return (
-    <div className="flex flex-col gap-0 sm:flex-row sm:items-start sm:justify-between">
-      {PIPELINE_STEPS.map((step, i) => {
-        const isPast = i < currentIdx;
-        const isActive = !done && step.id === current;
-        return (
-          <div key={step.id} className="flex flex-1 items-start gap-0 sm:flex-col sm:items-center">
-            <div className="flex items-center sm:flex-col">
-              <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold transition ${
-                  isPast
-                    ? "bg-emerald-500 text-white"
-                    : isActive
-                      ? "bg-indigo-600 text-white ring-4 ring-indigo-100"
-                      : "bg-slate-200 text-slate-500"
-                }`}
-              >
-                {isPast ? "✓" : i + 1}
-              </div>
-              {i < PIPELINE_STEPS.length - 1 && (
-                <div
-                  className={`mx-2 hidden h-0.5 flex-1 sm:mx-0 sm:mt-0 sm:block sm:h-8 sm:w-0.5 ${
-                    isPast ? "bg-emerald-400" : "bg-slate-200"
-                  }`}
-                />
-              )}
-            </div>
-            <div className="ml-3 pb-6 sm:ml-0 sm:mt-2 sm:pb-0 sm:text-center">
-              <p
-                className={`text-xs font-semibold sm:text-sm ${isActive ? "text-indigo-700" : isPast ? "text-emerald-700" : "text-slate-500"}`}
-              >
-                {step.label}
-              </p>
-              <p className="mt-0.5 hidden text-[10px] text-slate-400 sm:block">{step.desc}</p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 function ExtractionCard({ e }: { e: ExtractedResume }) {
@@ -411,9 +360,10 @@ export default function PipelinePage() {
         match to jobs, rank candidates, schedule interviews, and generate a recruiter report.
       </p>
 
-      {/* Pipeline flow diagram */}
-      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <StepIndicator current={stage} done={!!result && !loading} />
+      <div className="mt-8">
+        <RecruiterFlowDiagram
+          activeStep={pipelineStageToStep(result && !loading ? "report" : stage)}
+        />
       </div>
 
       {/* Input */}
@@ -502,7 +452,7 @@ export default function PipelinePage() {
         <div className="mt-10 flex flex-col items-center gap-3 text-slate-500">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
           <p className="text-sm">
-            {PIPELINE_STEPS.find((s) => s.id === stage)?.label ?? "Processing"}…
+            {pipelineStageToStep(stage)}…
           </p>
         </div>
       )}

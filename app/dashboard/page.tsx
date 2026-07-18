@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CANDIDATE_FLOW_STEPS, FlowDiagram } from "@/app/_components/FlowDiagram";
+import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
 import type { DashboardCandidate } from "@/lib/types";
 
 function scoreClass(score: number | null) {
@@ -59,13 +59,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-6">
-        <FlowDiagram
-          title="Pipeline progress"
-          steps={[...CANDIDATE_FLOW_STEPS]}
-          activeStep="Recruiter Dashboard"
-          variant="compact"
-          accent="indigo"
-        />
+        <RecruiterFlowDiagram activeStep="Recruiter Report" variant="compact" />
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">

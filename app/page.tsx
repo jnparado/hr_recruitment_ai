@@ -1,9 +1,6 @@
 import Link from "next/link";
-import {
-  CANDIDATE_FLOW_STEPS,
-  FlowDiagram,
-  RECRUITER_FLOW_STEPS,
-} from "@/app/_components/FlowDiagram";
+import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
+import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
 
 const features = [
   {
@@ -80,18 +77,8 @@ export default function Home() {
       </section>
 
       <section className="mt-14 space-y-6">
-        <FlowDiagram
-          title="Candidate application flow"
-          steps={[...CANDIDATE_FLOW_STEPS]}
-          highlightSteps={["Voice Interview", "Speech to Text", "Recruiter Dashboard"]}
-          accent="indigo"
-        />
-        <FlowDiagram
-          title="Recruiter tools"
-          steps={[...RECRUITER_FLOW_STEPS]}
-          highlightSteps={["AI Extracts", "Ranks Candidates", "Recruiter Report"]}
-          accent="emerald"
-        />
+        <CandidateFlowDiagram />
+        <RecruiterFlowDiagram />
       </section>
 
       <section className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

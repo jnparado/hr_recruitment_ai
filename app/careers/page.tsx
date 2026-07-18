@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CareerFlowDiagram } from "@/app/_components/CareerFlowDiagram";
+import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
 import type { DbJob } from "@/lib/types";
 
 export default function CareersPage() {
@@ -81,7 +81,9 @@ export default function CareersPage() {
       </section>
 
       <div className="mt-10">
-        <CareerFlowDiagram />
+        <CandidateFlowDiagram
+          activeStep={success ? "AI Calls Candidate" : "Candidate Applies"}
+        />
       </div>
 
       <section className="mt-12">

@@ -39,17 +39,24 @@ export default function RootLayout({
               HR Process
             </Link>
             <nav className="flex items-center gap-1 text-sm font-medium text-slate-600">
-              <Link
-                href="/dashboard"
-                className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
-              >
-                Dashboard
-              </Link>
+              <span className="hidden px-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-600 sm:inline">
+                Candidate
+              </span>
               <Link
                 href="/careers"
                 className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
               >
                 Careers
+              </Link>
+              <span className="mx-1 hidden h-4 w-px bg-slate-200 sm:block" aria-hidden />
+              <span className="hidden px-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 sm:inline">
+                Recruiter
+              </span>
+              <Link
+                href="/dashboard"
+                className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                Dashboard
               </Link>
               <Link
                 href="/pipeline"

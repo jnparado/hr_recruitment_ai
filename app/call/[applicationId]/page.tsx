@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { BrowserSpeechRecognizer, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
 import { INTERVIEW_QUESTION_LIMIT } from "@/lib/interview-config";
-import { CANDIDATE_FLOW_STEPS, FlowDiagram } from "@/app/_components/FlowDiagram";
+import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
 
 type Phase = "loading" | "incoming" | "interview" | "evaluating" | "complete";
@@ -215,9 +215,7 @@ export default function CallPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
       <div className="mb-8">
-        <FlowDiagram
-          title="Voice screening"
-          steps={[...CANDIDATE_FLOW_STEPS]}
+        <CandidateFlowDiagram
           activeStep={
             phase === "incoming" || phase === "loading"
               ? "AI Calls Candidate"
@@ -234,7 +232,6 @@ export default function CallPage() {
                     : undefined
           }
           variant="compact"
-          accent="indigo"
         />
       </div>
 

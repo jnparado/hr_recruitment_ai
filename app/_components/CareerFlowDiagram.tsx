@@ -3,13 +3,37 @@ import {
   FlowDiagram,
 } from "@/app/_components/FlowDiagram";
 
-export function CareerFlowDiagram() {
+/** Highlighted stages match the light-blue pills in the Candidate Application Flow diagram */
+export const CANDIDATE_HIGHLIGHT_STEPS = [
+  "Voice Interview",
+  "Speech to Text",
+  "Recruiter Dashboard",
+] as const;
+
+type CandidateFlowDiagramProps = {
+  /** Current step label from CANDIDATE_FLOW_STEPS */
+  activeStep?: string;
+  variant?: "default" | "compact" | "minimal";
+};
+
+/** Candidate-only application flow — Applies → … → Recruiter Dashboard */
+export function CandidateFlowDiagram({
+  activeStep,
+  variant = "default",
+}: CandidateFlowDiagramProps) {
   return (
     <FlowDiagram
-      title="Voice screening pipeline"
+      title="Candidate application flow"
       steps={[...CANDIDATE_FLOW_STEPS]}
-      highlightSteps={["Voice Interview", "Speech to Text", "Recruiter Dashboard"]}
+      activeStep={activeStep}
+      highlightSteps={[...CANDIDATE_HIGHLIGHT_STEPS]}
       accent="indigo"
+      variant={variant}
     />
   );
+}
+
+/** @deprecated Use CandidateFlowDiagram */
+export function CareerFlowDiagram(props: CandidateFlowDiagramProps) {
+  return <CandidateFlowDiagram {...props} />;
 }
