@@ -35,12 +35,36 @@ function cursorApiKey() {
   return process.env.CURSOR_API_KEY?.trim() || "";
 }
 
-/** Prefer OpenAI when OPENAI_API_KEY is set; otherwise Cursor. */
+/**
+ * Default: Cursor. Use OpenAI only when AI_PROVIDER=openai.
+ */
 export function aiProvider(): "openai" | "cursor" {
-  if (openaiApiKey()) return "openai";
+  const forced = process.env.AI_PROVIDER?.trim().toLowerCase();
+  if (forced === "openai") {
+    if (!openaiApiKey()) {
+      throw new Error("AI_PROVIDER=openai but OPENAI_API_KEY is not set.");
+    }
+    return "openai";
+  }
+  // Default and AI_PROVIDER=cursor
   if (cursorApiKey()) return "cursor";
+  if (openaiApiKey()) return "openai";
   throw new Error(
-    "No AI provider configured. Set OPENAI_API_KEY or CURSOR_API_KEY in .env.local."
+    "No AI provider configured. Set CURSOR_API_KEY (recommended) or OPENAI_API_KEY in .env.local."
+  );
+}
+
+function isOpenAIQuotaOrBillingError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const status =
+    err && typeof err === "object" && "status" in err
+      ? Number((err as { status?: number }).status)
+      : undefined;
+  return (
+    status === 429 ||
+    /exceeded your current quota|insufficient_quota|billing_not_active|rate_limit/i.test(
+      msg
+    )
   );
 }
 
@@ -231,11 +255,22 @@ export async function cursorJson<T>(system: string, user: string): Promise<T> {
   ].join("\n");
 
   if (aiProvider() === "openai") {
-    const raw = await openaiJsonPrompt(
-      "You are an HR AI assistant. Always respond with valid JSON only.",
-      prompt
-    );
-    return extractJson<T>(raw);
+    try {
+      const raw = await openaiJsonPrompt(
+        "You are an HR AI assistant. Always respond with valid JSON only.",
+        prompt
+      );
+      return extractJson<T>(raw);
+    } catch (err) {
+      if (isOpenAIQuotaOrBillingError(err) && cursorApiKey()) {
+        console.warn(
+          "[ai] OpenAI quota/billing error — falling back to Cursor:",
+          err instanceof Error ? err.message : err
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 
   const raw = await cursorPrompt(prompt);
@@ -262,16 +297,7 @@ export async function cursorChatJson<T>(
       ? "Begin the interview. Greet the candidate briefly and ask your first question."
       : `Conversation so far:\n${transcript}\n\nContinue with your next short question or closing message.`;
 
-  if (aiProvider() === "openai") {
-    const raw = await openaiJsonPrompt(
-      `${system}\n\nRespond with valid JSON only: {"message": string, "done": boolean}. Keep "message" under 2 short sentences.`,
-      user,
-      { maxTokens: 220 }
-    );
-    return extractJson<T>(raw);
-  }
-
-  const prompt = [
+  const cursorPromptText = [
     system,
     "",
     "Important: respond with valid JSON only. No markdown fences, no commentary.",
@@ -279,6 +305,26 @@ export async function cursorChatJson<T>(
     user,
   ].join("\n");
 
-  const raw = await cursorPrompt(prompt, sessionId);
+  if (aiProvider() === "openai") {
+    try {
+      const raw = await openaiJsonPrompt(
+        `${system}\n\nRespond with valid JSON only: {"message": string, "done": boolean}. Keep "message" under 2 short sentences.`,
+        user,
+        { maxTokens: 220 }
+      );
+      return extractJson<T>(raw);
+    } catch (err) {
+      if (isOpenAIQuotaOrBillingError(err) && cursorApiKey()) {
+        console.warn(
+          "[ai] OpenAI quota/billing error — falling back to Cursor:",
+          err instanceof Error ? err.message : err
+        );
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  const raw = await cursorPrompt(cursorPromptText, sessionId);
   return extractJson<T>(raw);
 }
