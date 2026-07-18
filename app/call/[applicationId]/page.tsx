@@ -4,21 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { MicRecorder } from "@/lib/audio";
+import { CANDIDATE_FLOW_STEPS, FlowDiagram } from "@/app/_components/FlowDiagram";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
 
 type Phase = "loading" | "incoming" | "interview" | "evaluating" | "complete";
 type VoiceState = "idle" | "speaking" | "recording" | "transcribing";
-
-const FLOW = [
-  "Candidate Applies",
-  "AI Calls Candidate",
-  "Voice Interview",
-  "Speech to Text",
-  "Grok AI",
-  "Evaluate Answers",
-  "Score",
-  "Recruiter Dashboard",
-];
 
 export default function CallPage() {
   const params = useParams();
@@ -188,15 +178,24 @@ export default function CallPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-      <div className="mb-8 flex flex-wrap items-center justify-center gap-1 text-[10px] text-slate-400">
-        {FLOW.map((step, i) => (
-          <span key={step} className="flex items-center gap-1">
-            <span className={step === "AI Calls Candidate" ? "font-semibold text-indigo-600" : ""}>
-              {step}
-            </span>
-            {i < FLOW.length - 1 && "→"}
-          </span>
-        ))}
+      <div className="mb-8">
+        <FlowDiagram
+          title="Voice screening"
+          steps={[...CANDIDATE_FLOW_STEPS]}
+          activeStep={
+            phase === "incoming" || phase === "loading"
+              ? "AI Calls Candidate"
+              : phase === "interview"
+                ? "Voice Interview"
+                : phase === "evaluating"
+                  ? "Grok AI"
+                  : phase === "complete"
+                    ? "Recruiter Dashboard"
+                    : undefined
+          }
+          variant="compact"
+          accent="indigo"
+        />
       </div>
 
       {error && (

@@ -1,24 +1,9 @@
 import Link from "next/link";
-
-const pipelineSteps = [
-  "Resume Received",
-  "AI Extracts",
-  "Matches Jobs",
-  "Ranks Candidates",
-  "Schedules Interviews",
-  "Recruiter Report",
-];
-
-const careerFlow = [
-  "Candidate Applies",
-  "AI Calls Candidate",
-  "Voice Interview",
-  "Speech to Text",
-  "Grok AI",
-  "Evaluate Answers",
-  "Score",
-  "Recruiter Dashboard",
-];
+import {
+  CANDIDATE_FLOW_STEPS,
+  FlowDiagram,
+  RECRUITER_FLOW_STEPS,
+} from "@/app/_components/FlowDiagram";
 
 const features = [
   {
@@ -94,39 +79,19 @@ export default function Home() {
         </Link>
       </section>
 
-      {/* Pipeline flow */}
-      <section className="mt-14">
-        <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Candidate application flow
-        </h2>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
-          {careerFlow.map((step, i) => (
-            <span key={step} className="flex items-center gap-2">
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm">
-                {step}
-              </span>
-              {i < careerFlow.length - 1 && <span className="text-slate-300">↓</span>}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-14">
-        <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Recruiter tools
-        </h2>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
-          {pipelineSteps.map((step, i) => (
-            <span key={step} className="flex items-center gap-2">
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm">
-                {step}
-              </span>
-              {i < pipelineSteps.length - 1 && (
-                <span className="text-slate-300">↓</span>
-              )}
-            </span>
-          ))}
-        </div>
+      <section className="mt-14 space-y-6">
+        <FlowDiagram
+          title="Candidate application flow"
+          steps={[...CANDIDATE_FLOW_STEPS]}
+          highlightSteps={["Voice Interview", "Grok AI", "Recruiter Dashboard"]}
+          accent="indigo"
+        />
+        <FlowDiagram
+          title="Recruiter tools"
+          steps={[...RECRUITER_FLOW_STEPS]}
+          highlightSteps={["AI Extracts", "Ranks Candidates", "Recruiter Report"]}
+          accent="emerald"
+        />
       </section>
 
       <section className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

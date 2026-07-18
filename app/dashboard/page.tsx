@@ -2,18 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CANDIDATE_FLOW_STEPS, FlowDiagram } from "@/app/_components/FlowDiagram";
 import type { DashboardCandidate } from "@/lib/types";
-
-const FLOW = [
-  "Candidate Applies",
-  "AI Calls Candidate",
-  "Voice Interview",
-  "Speech to Text",
-  "Grok AI",
-  "Evaluate",
-  "Score",
-  "Recruiter Dashboard",
-];
 
 function scoreClass(score: number | null) {
   if (score == null) return "text-slate-400";
@@ -68,15 +58,14 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2 text-xs text-slate-500">
-        {FLOW.map((step, i) => (
-          <span key={step} className="flex items-center gap-1">
-            <span className={step === "Recruiter Dashboard" ? "font-semibold text-indigo-600" : ""}>
-              {step}
-            </span>
-            {i < FLOW.length - 1 && "→"}
-          </span>
-        ))}
+      <div className="mt-6">
+        <FlowDiagram
+          title="Pipeline progress"
+          steps={[...CANDIDATE_FLOW_STEPS]}
+          activeStep="Recruiter Dashboard"
+          variant="compact"
+          accent="indigo"
+        />
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
