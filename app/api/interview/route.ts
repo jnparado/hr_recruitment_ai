@@ -1,9 +1,9 @@
-import { aiChatJson } from "@/lib/ai";
+import { cursorChatJson } from "@/lib/cursor";
 import { INTERVIEW_QUESTION_LIMIT } from "@/lib/interview-config";
 import { enrichInterviewSetup } from "@/lib/interview-context";
 import type { ChatMessage, InterviewSetup } from "@/lib/types";
 
-export const maxDuration = 90;
+export const maxDuration = 180;
 
 function systemPrompt(setup: InterviewSetup, questionNumber: number) {
   const resumeSection = setup.resumeText?.trim()
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   try {
     const setup = await enrichInterviewSetup(body.setup!);
     const questionNumber = questionsAsked + 1;
-    const reply = await aiChatJson<{ message: string; done: boolean }>(
+    const reply = await cursorChatJson<{ message: string; done: boolean }>(
       systemPrompt(setup, questionNumber),
       messages,
       body.convId ?? setup.applicationId

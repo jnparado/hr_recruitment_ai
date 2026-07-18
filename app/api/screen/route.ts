@@ -1,4 +1,4 @@
-import { aiJson } from "@/lib/ai";
+import { cursorJson } from "@/lib/cursor";
 import { extractResumeText } from "@/lib/extract";
 import { storageForFile, uploadResumes } from "@/lib/storage";
 import type { ScreeningResult } from "@/lib/types";
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       const storage = storageForFile(stored, file.name);
       try {
         const resumeText = await extractResumeText(file);
-        const analysis = await aiJson<Omit<ScreeningResult, "fileName" | "storagePath" | "storageUrl">>(
+        const analysis = await cursorJson<Omit<ScreeningResult, "fileName" | "storagePath" | "storageUrl">>(
           SYSTEM_PROMPT,
           `JOB DESCRIPTION:\n${jobDescription}\n\nRESUME (${file.name}):\n${resumeText}`
         );

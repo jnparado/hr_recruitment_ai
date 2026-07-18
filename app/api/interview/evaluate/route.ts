@@ -1,4 +1,4 @@
-import { aiJson } from "@/lib/ai";
+import { cursorJson } from "@/lib/cursor";
 import { enrichInterviewSetup } from "@/lib/interview-context";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       ? setup.resumeText.trim()
       : "(not available)";
 
-    const evaluation = await aiJson<InterviewEvaluation>(
+    const evaluation = await cursorJson<InterviewEvaluation>(
       SYSTEM_PROMPT,
       `Role: ${setup.jobTitle}
 Candidate: ${setup.candidateName || "Unknown"}

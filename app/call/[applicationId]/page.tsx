@@ -193,6 +193,12 @@ export default function CallPage() {
       const fullSaveData = await fullSaveRes.json();
       if (!fullSaveRes.ok) throw new Error(fullSaveData.error || "Failed to save score.");
 
+      await fetch("/api/interview/end-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: applicationId }),
+      }).catch(() => {});
+
       setPhase("complete");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save interview.");
