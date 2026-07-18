@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
-import { BrowserSpeechRecognizer, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
+import { BrowserSpeechRecognizer, prefetchSpeechVoices, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
 type Phase = "setup" | "chat" | "evaluating" | "report";
@@ -49,6 +49,10 @@ function InterviewContent() {
   const [voiceMode, setVoiceMode] = useState(true);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    prefetchSpeechVoices();
+  }, []);
   const recorderRef = useRef<BrowserSpeechRecognizer | null>(null);
 
   useEffect(() => {

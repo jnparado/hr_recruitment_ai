@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { BrowserSpeechRecognizer, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
+import { BrowserSpeechRecognizer, prefetchSpeechVoices, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
 import { INTERVIEW_QUESTION_LIMIT } from "@/lib/interview-config";
 import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
@@ -54,6 +54,10 @@ export default function CallPage() {
         setPhase("incoming");
       });
   }, [applicationId, invalidLink]);
+
+  useEffect(() => {
+    prefetchSpeechVoices();
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -184,8 +188,13 @@ export default function CallPage() {
       const updated: ChatMessage[] = [...history, { role: "assistant", content: data.message }];
       setMessages(updated);
       setThinking(false);
-      await speak(data.message);
-      if (data.done) void finalizeInterview(updated);
+      // Speak immediately; don't block UI updates
+      void speak(data.message).then(() => {
+        if (data.done) void finalizeInterview(updated);
+      });
+      if (!data.done) return;
+      // If done, finalize after speech in the then() above
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {

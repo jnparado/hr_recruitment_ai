@@ -27,6 +27,27 @@ export function browserSpeechSupported() {
   return typeof window !== "undefined" && !!window.speechSynthesis && !!getSpeechRecognition();
 }
 
+/** Warm up voices so the first spoken reply is not delayed. */
+export function prefetchSpeechVoices() {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.addEventListener("voiceschanged", () => {
+    window.speechSynthesis.getVoices();
+  }, { once: true });
+}
+
+function pickVoice(): SpeechSynthesisVoice | null {
+  if (typeof window === "undefined" || !window.speechSynthesis) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  return (
+    voices.find((v) => /en-US/i.test(v.lang) && /Google|Samantha|Neural|Natural/i.test(v.name)) ||
+    voices.find((v) => /en/i.test(v.lang) && v.localService) ||
+    voices.find((v) => /en/i.test(v.lang)) ||
+    voices[0]
+  );
+}
+
 export function speakInBrowser(text: string): Promise<void> {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
@@ -34,13 +55,43 @@ export function speakInBrowser(text: string): Promise<void> {
       return;
     }
 
+    const cleaned = text.replace(/\s+/g, " ").trim();
+    if (!cleaned) {
+      resolve();
+      return;
+    }
+
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1;
+
+    // Chrome sometimes pauses speechSynthesis mid-utterance — keep it alive
+    const keepAlive = window.setInterval(() => {
+      if (!window.speechSynthesis.speaking) {
+        window.clearInterval(keepAlive);
+        return;
+      }
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }, 8_000);
+
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.rate = 1.15;
     utterance.pitch = 1;
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
-    window.speechSynthesis.speak(utterance);
+    utterance.volume = 1;
+    const voice = pickVoice();
+    if (voice) utterance.voice = voice;
+
+    const done = () => {
+      window.clearInterval(keepAlive);
+      resolve();
+    };
+
+    utterance.onend = done;
+    utterance.onerror = done;
+
+    // Small delay helps Chrome actually start speaking after cancel()
+    window.setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 20);
   });
 }
 

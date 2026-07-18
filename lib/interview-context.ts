@@ -52,6 +52,11 @@ export async function loadInterviewContext(applicationId: string): Promise<Inter
 
 /** Ensures setup includes resume + job description when applicationId is present. */
 export async function enrichInterviewSetup(setup: InterviewSetup): Promise<InterviewSetup> {
+  // Client already loaded context — skip slow resume download on every turn
+  if (setup.jobDescription?.trim() && setup.resumeText?.trim()) {
+    return setup;
+  }
+
   if (!setup.applicationId) return setup;
 
   const ctx = await loadInterviewContext(setup.applicationId);

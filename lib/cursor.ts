@@ -127,11 +127,16 @@ async function archiveAgent(agentId: string) {
   await cursorFetch(`/agents/${agentId}/archive`, { method: "POST" }).catch(() => {});
 }
 
-async function openaiJsonPrompt(system: string, user: string): Promise<string> {
+async function openaiJsonPrompt(
+  system: string,
+  user: string,
+  options?: { maxTokens?: number }
+): Promise<string> {
   const client = openaiClient();
   const completion = await client.chat.completions.create({
     model: OPENAI_MODEL,
-    temperature: 0.3,
+    temperature: 0.4,
+    max_tokens: options?.maxTokens ?? 800,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: system },
@@ -243,17 +248,28 @@ export async function cursorChatJson<T>(
   history: ChatMessage[],
   sessionId?: string
 ): Promise<T> {
+  // Keep recent turns only — faster prompts, lower latency
+  const recent = history.slice(-8);
   const transcript =
-    history.length === 0
+    recent.length === 0
       ? ""
-      : history
+      : recent
           .map((m) => `${m.role === "assistant" ? "Interviewer" : "Candidate"}: ${m.content}`)
           .join("\n");
 
   const user =
-    history.length === 0
-      ? "Begin the interview. Greet the candidate and ask your first question."
-      : `Conversation so far:\n${transcript}\n\nContinue the interview with your next question or closing message.`;
+    recent.length === 0
+      ? "Begin the interview. Greet the candidate briefly and ask your first question."
+      : `Conversation so far:\n${transcript}\n\nContinue with your next short question or closing message.`;
+
+  if (aiProvider() === "openai") {
+    const raw = await openaiJsonPrompt(
+      `${system}\n\nRespond with valid JSON only: {"message": string, "done": boolean}. Keep "message" under 2 short sentences.`,
+      user,
+      { maxTokens: 220 }
+    );
+    return extractJson<T>(raw);
+  }
 
   const prompt = [
     system,
@@ -262,14 +278,6 @@ export async function cursorChatJson<T>(
     "",
     user,
   ].join("\n");
-
-  if (aiProvider() === "openai") {
-    const raw = await openaiJsonPrompt(
-      "You are an AI interviewer. Always respond with valid JSON only.",
-      prompt
-    );
-    return extractJson<T>(raw);
-  }
 
   const raw = await cursorPrompt(prompt, sessionId);
   return extractJson<T>(raw);
