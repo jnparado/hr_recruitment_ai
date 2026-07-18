@@ -20,7 +20,6 @@ create table if not exists applications (
   applicant_email text not null,
   resume_path text not null,
   resume_url text not null,
-  certificate_files jsonb not null default '[]',
   status text not null default 'received',
   match_score integer,
   rank integer,

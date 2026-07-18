@@ -11,14 +11,12 @@ export default function CareersPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [resume, setResume] = useState<File | null>(null);
-  const [certificates, setCertificates] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [voiceInterviewUrl, setVoiceInterviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const certInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/jobs")
@@ -49,9 +47,6 @@ export default function CareersPage() {
       form.set("name", name);
       form.set("email", email);
       form.set("resume", resume);
-      for (const cert of certificates) {
-        form.append("certificates", cert);
-      }
       const res = await fetch("/api/apply", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Application failed.");
@@ -60,7 +55,6 @@ export default function CareersPage() {
       setName("");
       setEmail("");
       setResume(null);
-      setCertificates([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -182,37 +176,6 @@ export default function CareersPage() {
                   className="hidden"
                   disabled={!selectedJob}
                   onChange={(e) => setResume(e.target.files?.[0] ?? null)}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-900">
-                Certificates <span className="text-slate-500">(optional — PDF, JPG, PNG)</span>
-              </label>
-              <div
-                onClick={() => selectedJob && certInputRef.current?.click()}
-                className="mt-1 flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-emerald-400 hover:bg-emerald-50/30 disabled:cursor-not-allowed"
-              >
-                <p className="text-sm text-slate-600">
-                  {certificates.length > 0
-                    ? `${certificates.length} file${certificates.length > 1 ? "s" : ""} selected`
-                    : "Click to upload certificates"}
-                </p>
-                {certificates.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-xs text-slate-500">
-                    {certificates.map((f) => (
-                      <li key={f.name}>{f.name}</li>
-                    ))}
-                  </ul>
-                )}
-                <input
-                  ref={certInputRef}
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                  multiple
-                  className="hidden"
-                  disabled={!selectedJob}
-                  onChange={(e) => setCertificates(Array.from(e.target.files ?? []))}
                 />
               </div>
             </div>

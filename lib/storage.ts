@@ -1,4 +1,4 @@
-import { CERTIFICATE_BUCKET, RESUME_BUCKET, supabaseAdmin } from "@/lib/supabase";
+import { RESUME_BUCKET, supabaseAdmin } from "@/lib/supabase";
 
 export interface StoredFile {
   fileName: string;
@@ -46,11 +46,6 @@ export async function uploadResume(file: File, folder = "resumes"): Promise<Stor
   return uploadToBucket(RESUME_BUCKET, file, folder);
 }
 
-/** Uploads a certificate to the certificate bucket. */
-export async function uploadCertificate(file: File, folder = "certificates"): Promise<StoredFile> {
-  return uploadToBucket(CERTIFICATE_BUCKET, file, folder);
-}
-
 /** Uploads multiple files in parallel. Failures are captured per file. */
 export async function uploadFiles(
   files: File[],
@@ -75,13 +70,6 @@ export async function uploadFiles(
 /** @deprecated use uploadFiles */
 export async function uploadResumes(files: File[]): Promise<StoredFile[]> {
   return uploadFiles(files, (file) => uploadResume(file));
-}
-
-export async function uploadCertificates(
-  files: File[],
-  folder: string
-): Promise<StoredFile[]> {
-  return uploadFiles(files, (file) => uploadCertificate(file, folder));
 }
 
 /** Looks up the stored file for a file name. */

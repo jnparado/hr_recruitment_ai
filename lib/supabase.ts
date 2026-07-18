@@ -3,9 +3,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export const RESUME_BUCKET =
   process.env.SUPABASE_RESUME_BUCKET || "upload_resume";
 
-export const CERTIFICATE_BUCKET =
-  process.env.SUPABASE_CERTIFICATE_BUCKET || "certificate";
-
 /** Server-side Supabase client using the service role key (for storage uploads). */
 export function supabaseAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

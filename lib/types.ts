@@ -138,12 +138,6 @@ export interface DbJob {
   created_at: string;
 }
 
-export interface StoredFileRecord {
-  fileName: string;
-  storagePath: string;
-  storageUrl: string;
-}
-
 export interface DbApplication {
   id: string;
   job_id: string | null;
@@ -152,7 +146,6 @@ export interface DbApplication {
   applicant_email: string;
   resume_path: string;
   resume_url: string;
-  certificate_files: StoredFileRecord[];
   status: string;
   match_score: number | null;
   rank: number | null;

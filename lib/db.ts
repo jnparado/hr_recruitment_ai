@@ -30,7 +30,6 @@ export async function createApplication(input: {
   applicantEmail: string;
   resumePath: string;
   resumeUrl: string;
-  certificateFiles?: { fileName: string; storagePath: string; storageUrl: string }[];
 }): Promise<DbApplication> {
   const { data, error } = await supabaseAdmin()
     .from("applications")
@@ -41,7 +40,6 @@ export async function createApplication(input: {
       applicant_email: input.applicantEmail,
       resume_path: input.resumePath,
       resume_url: input.resumeUrl,
-      certificate_files: input.certificateFiles ?? [],
       status: "received",
     })
     .select()
