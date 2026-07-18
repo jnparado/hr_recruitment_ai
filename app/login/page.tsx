@@ -3,7 +3,6 @@
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   return (
@@ -24,7 +23,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("recruiter@gmail.com");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,13 +33,18 @@ function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, next }),
       });
-      if (signInError) throw signInError;
-      router.replace(next.startsWith("/") ? next : "/dashboard");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed.");
+      router.replace(
+        typeof data.next === "string" && data.next.startsWith("/")
+          ? data.next
+          : "/dashboard"
+      );
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");
@@ -81,7 +85,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-            placeholder="recruiter@company.com"
+            placeholder="recruiter@gmail.com"
           />
         </label>
 
@@ -113,8 +117,8 @@ function LoginForm() {
       </form>
 
       <p className="mt-6 text-center text-xs text-slate-500">
-        Create recruiter accounts in the Supabase Dashboard → Authentication → Users.
-        There is no public signup.
+        Demo credentials: <span className="font-medium text-slate-700">recruiter@gmail.com</span> /{" "}
+        <span className="font-medium text-slate-700">12345</span>
       </p>
     </div>
   );

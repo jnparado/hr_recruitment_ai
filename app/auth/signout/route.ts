@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { RECRUITER_COOKIE, recruiterCookieOptions } from "@/lib/recruiter-session";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-
   const referer = request.headers.get("referer");
   const url = referer ? new URL(referer) : new URL("/", request.url);
-  return NextResponse.redirect(new URL("/login", url.origin), { status: 303 });
+  const res = NextResponse.redirect(new URL("/login", url.origin), {
+    status: 303,
+  });
+  res.cookies.set(RECRUITER_COOKIE, "", {
+    ...recruiterCookieOptions(0),
+    maxAge: 0,
+  });
+  return res;
 }
