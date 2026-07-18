@@ -2,22 +2,29 @@ import { cookies } from "next/headers";
 
 export const RECRUITER_COOKIE = "recruiter_session";
 
+/** Defaults so login works on Vercel even if env vars are missing */
+const DEFAULT_EMAIL = "recruiter@gmail.com";
+const DEFAULT_PASSWORD = "12345";
+
 const SESSION_VALUE = "recruiter-ok";
 
+/**
+ * Login email/password. Uses RECRUITER_LOGIN_* only (not RECRUITER_EMAIL),
+ * so n8n notify settings on Vercel cannot break login.
+ * Defaults: recruiter@gmail.com / 12345
+ */
 export function getRecruiterEmail() {
-  return (process.env.RECRUITER_EMAIL || "").trim().toLowerCase();
+  return (process.env.RECRUITER_LOGIN_EMAIL || DEFAULT_EMAIL).trim().toLowerCase();
 }
 
 export function getRecruiterPassword() {
-  return process.env.RECRUITER_PASSWORD || "";
+  return process.env.RECRUITER_LOGIN_PASSWORD || DEFAULT_PASSWORD;
 }
 
 export function verifyRecruiterCredentials(email: string, password: string) {
-  const expectedEmail = getRecruiterEmail();
-  const expectedPassword = getRecruiterPassword();
-  if (!expectedEmail || !expectedPassword) return false;
   return (
-    email.trim().toLowerCase() === expectedEmail && password === expectedPassword
+    email.trim().toLowerCase() === getRecruiterEmail() &&
+    password === getRecruiterPassword()
   );
 }
 
