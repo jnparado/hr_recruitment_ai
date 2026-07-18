@@ -1,22 +1,24 @@
 import Link from "next/link";
 import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
 import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
+import { getRecruiter } from "@/lib/auth";
 
-const features = [
-  {
-    href: "/careers",
-    title: "Career Website",
-    description:
-      "Public careers page where candidates browse open roles and apply with a PDF resume. Applications flow through Supabase Storage and trigger n8n automation.",
-    bullets: [
-      "Candidate apply form (PDF upload)",
-      "Stored in Supabase Storage",
-      "Triggers n8n workflow",
-      "AI parses name, skills, experience, education, certificates",
-    ],
-    cta: "View careers",
-    primary: true,
-  },
+const candidateFeature = {
+  href: "/careers",
+  title: "Career Website",
+  description:
+    "Public careers page where candidates browse open roles and apply with a PDF resume. Applications flow through Supabase Storage and trigger n8n automation.",
+  bullets: [
+    "Candidate apply form (PDF upload)",
+    "Stored in Supabase Storage",
+    "Triggers n8n workflow",
+    "AI parses name, skills, experience, education, certificates",
+  ],
+  cta: "View careers",
+  primary: true as const,
+};
+
+const recruiterFeatures = [
   {
     href: "/pipeline",
     title: "Recruitment Pipeline",
@@ -35,7 +37,12 @@ const features = [
     title: "AI Resume Screening",
     description:
       "Upload a batch of resumes against a job description. Cursor reads every resume, scores the match, ranks candidates, and flags skill gaps.",
-    bullets: ["Reads PDF, DOCX & TXT resumes", "Matches job descriptions", "Ranks candidates 0–100", "Detects critical skill gaps"],
+    bullets: [
+      "Reads PDF, DOCX & TXT resumes",
+      "Matches job descriptions",
+      "Ranks candidates 0–100",
+      "Detects critical skill gaps",
+    ],
     cta: "Screen resumes",
   },
   {
@@ -43,7 +50,12 @@ const features = [
     title: "AI Interview Assistant",
     description:
       "Cursor conducts the first screening interview by voice or text — one question at a time — then delivers a candidate score and a clear hire recommendation.",
-    bullets: ["Real voice interviews (browser speech)", "Experience & skills deep-dive", "Salary expectations & availability", "Score + advance/reject call"],
+    bullets: [
+      "Real voice interviews (browser speech)",
+      "Experience & skills deep-dive",
+      "Salary expectations & availability",
+      "Score + advance/reject call",
+    ],
     cta: "Start an interview",
   },
 ];
@@ -54,7 +66,21 @@ const audiences = [
   { title: "Job marketplaces", text: "Embed instant candidate–job matching and automated screening." },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const recruiter = await getRecruiter();
+  const features = [
+    candidateFeature,
+    ...recruiterFeatures.map((f) =>
+      recruiter
+        ? f
+        : {
+            ...f,
+            href: `/login?next=${encodeURIComponent(f.href)}`,
+            cta: "Recruiter login",
+          }
+    ),
+  ];
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <section className="mx-auto max-w-3xl text-center">
@@ -65,15 +91,23 @@ export default function Home() {
           Recruitment on autopilot
         </h1>
         <p className="mt-4 text-lg text-slate-600">
-          HR Process runs the full hiring pipeline — receive resumes, extract credentials,
-          match jobs, rank candidates, schedule interviews, and deliver recruiter reports.
+          Candidates apply without an account. Recruiters sign in to run screening,
+          scoring, interviews, and reports.
         </p>
-        <Link
-          href="/careers"
-          className="mt-6 inline-flex items-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
-        >
-          Browse open roles →
-        </Link>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/careers"
+            className="inline-flex items-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
+          >
+            Browse open roles →
+          </Link>
+          <Link
+            href={recruiter ? "/dashboard" : "/login"}
+            className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-6 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+          >
+            {recruiter ? "Recruiter dashboard →" : "Recruiter login"}
+          </Link>
+        </div>
       </section>
 
       <section className="mt-14 space-y-6">
@@ -84,9 +118,9 @@ export default function Home() {
       <section className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {features.map((f) => (
           <div
-            key={f.href}
+            key={f.title}
             className={`flex flex-col rounded-2xl border p-7 shadow-sm transition hover:shadow-md ${
-              f.primary
+              "primary" in f && f.primary
                 ? "border-indigo-300 bg-gradient-to-br from-indigo-50 to-white ring-1 ring-indigo-200"
                 : "border-slate-200 bg-white"
             }`}
@@ -104,7 +138,7 @@ export default function Home() {
             <Link
               href={f.href}
               className={`mt-6 inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                f.primary
+                "primary" in f && f.primary
                   ? "bg-indigo-600 text-white hover:bg-indigo-500"
                   : "border border-slate-300 text-slate-700 hover:bg-slate-50"
               }`}

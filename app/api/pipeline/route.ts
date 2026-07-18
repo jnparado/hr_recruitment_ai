@@ -1,3 +1,4 @@
+import { requireRecruiter } from "@/lib/auth";
 import { cursorJson } from "@/lib/cursor";
 import { extractResumeText } from "@/lib/extract";
 import { storageForFile, uploadResumes } from "@/lib/storage";
@@ -185,6 +186,9 @@ function rankCandidates(
 }
 
 export async function POST(request: Request) {
+  const auth = await requireRecruiter();
+  if (auth.error) return auth.error;
+
   let form: FormData;
   try {
     form = await request.formData();

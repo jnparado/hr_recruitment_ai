@@ -1,3 +1,4 @@
+import { requireRecruiter } from "@/lib/auth";
 import { cursorJson } from "@/lib/cursor";
 import { extractResumeText } from "@/lib/extract";
 import { storageForFile, uploadResumes } from "@/lib/storage";
@@ -28,6 +29,9 @@ Scoring guidance: 85-100 strong_match, 70-84 good_match, 50-69 possible_match, b
 Be honest and calibrated - do not inflate scores. Base everything strictly on the resume text provided.`;
 
 export async function POST(request: Request) {
+  const auth = await requireRecruiter();
+  if (auth.error) return auth.error;
+
   let form: FormData;
   try {
     form = await request.formData();

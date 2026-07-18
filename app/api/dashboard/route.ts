@@ -1,6 +1,10 @@
+import { requireRecruiter } from "@/lib/auth";
 import { listDashboardCandidates } from "@/lib/db";
 
 export async function GET() {
+  const auth = await requireRecruiter();
+  if (auth.error) return auth.error;
+
   try {
     const candidates = await listDashboardCandidates();
     candidates.sort((a, b) => {
