@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { BrowserSpeechRecognizer, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
+import { INTERVIEW_QUESTION_LIMIT } from "@/lib/interview-config";
 import { CANDIDATE_FLOW_STEPS, FlowDiagram } from "@/app/_components/FlowDiagram";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
 
 type Phase = "loading" | "incoming" | "interview" | "evaluating" | "complete";
 type VoiceState = "idle" | "speaking" | "recording" | "transcribing";
+type SaveStage = "transcript" | "evaluate" | "score";
 
 export default function CallPage() {
   const params = useParams();
@@ -25,6 +27,7 @@ export default function CallPage() {
   const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [thinking, setThinking] = useState(false);
+  const [saveStage, setSaveStage] = useState<SaveStage>("transcript");
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<BrowserSpeechRecognizer | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -80,6 +83,13 @@ export default function CallPage() {
         if (!text) throw new Error("No speech detected. Please try again.");
         const updated: ChatMessage[] = [...messages, { role: "user", content: text }];
         setMessages(updated);
+
+        const questionsAsked = updated.filter((m) => m.role === "assistant").length;
+        if (questionsAsked >= INTERVIEW_QUESTION_LIMIT) {
+          void finalizeInterview(updated);
+          return;
+        }
+
         void fetchNext(updated);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Transcription failed.");
@@ -126,7 +136,7 @@ export default function CallPage() {
       setMessages(updated);
       setThinking(false);
       await speak(data.message);
-      if (data.done) await evaluate(updated);
+      if (data.done) void finalizeInterview(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -134,10 +144,25 @@ export default function CallPage() {
     }
   }
 
-  async function evaluate(history: ChatMessage[]) {
+  async function finalizeInterview(history: ChatMessage[]) {
     setPhase("evaluating");
+    setSaveStage("transcript");
+    setError(null);
     try {
-      const res = await fetch("/api/interview/evaluate", {
+      const saveRes = await fetch("/api/interview/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId,
+          messages: history,
+          transcriptOnly: true,
+        }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveData.error || "Failed to save transcript.");
+
+      setSaveStage("evaluate");
+      const evalRes = await fetch("/api/interview/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -151,19 +176,26 @@ export default function CallPage() {
           messages: history,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Evaluation failed.");
-      setEvaluation(data);
+      const evalData = await evalRes.json();
+      if (!evalRes.ok) throw new Error(evalData.error || "Evaluation failed.");
+      setEvaluation(evalData);
 
-      await fetch("/api/interview/save", {
+      setSaveStage("score");
+      const fullSaveRes = await fetch("/api/interview/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId, messages: history, evaluation: data }),
+        body: JSON.stringify({
+          applicationId,
+          messages: history,
+          evaluation: evalData,
+        }),
       });
+      const fullSaveData = await fullSaveRes.json();
+      if (!fullSaveRes.ok) throw new Error(fullSaveData.error || "Failed to save score.");
 
       setPhase("complete");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Evaluation failed.");
+      setError(err instanceof Error ? err.message : "Failed to save interview.");
       setPhase("interview");
     }
   }
@@ -186,7 +218,11 @@ export default function CallPage() {
               : phase === "interview"
                 ? "Voice Interview"
                 : phase === "evaluating"
-                  ? "Cursor AI"
+                  ? saveStage === "transcript"
+                    ? "Speech to Text"
+                    : saveStage === "evaluate"
+                      ? "Evaluate Answers"
+                      : "Score"
                   : phase === "complete"
                     ? "Recruiter Dashboard"
                     : undefined
@@ -242,8 +278,12 @@ export default function CallPage() {
             <p className="text-sm font-semibold text-slate-900">Voice interview — {jobTitle}</p>
             <p className="text-xs text-slate-500">
               {phase === "evaluating"
-                ? "Speech → Text → Cursor AI → Scoring…"
-                : "Speak your answers using the mic button"}
+                ? saveStage === "transcript"
+                  ? "Converting speech to text and saving your answers…"
+                  : saveStage === "evaluate"
+                    ? "Evaluating your answers…"
+                    : "Saving your score…"
+                : `Speak your answers using the mic button · ${Math.min(messages.filter((m) => m.role === "assistant").length, INTERVIEW_QUESTION_LIMIT)}/${INTERVIEW_QUESTION_LIMIT} questions`}
             </p>
           </div>
           <div className="flex max-h-[50vh] min-h-[280px] flex-col gap-3 overflow-y-auto p-5">

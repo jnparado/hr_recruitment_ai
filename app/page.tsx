@@ -83,7 +83,7 @@ export default function Home() {
         <FlowDiagram
           title="Candidate application flow"
           steps={[...CANDIDATE_FLOW_STEPS]}
-          highlightSteps={["Voice Interview", "Cursor AI", "Recruiter Dashboard"]}
+          highlightSteps={["Voice Interview", "Speech to Text", "Recruiter Dashboard"]}
           accent="indigo"
         />
         <FlowDiagram

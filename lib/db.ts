@@ -181,6 +181,33 @@ export async function markReminderSent(interviewId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function saveVoiceInterviewTranscript(input: {
+  applicationId: string;
+  transcript: ChatMessage[];
+}): Promise<void> {
+  const { error: viError } = await supabaseAdmin().from("voice_interviews").upsert(
+    {
+      application_id: input.applicationId,
+      transcript: input.transcript,
+      evaluation: {},
+      overall_score: 0,
+      recommendation: "",
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: "application_id" }
+  );
+  if (viError) throw new Error(viError.message);
+
+  const { error: statusError } = await supabaseAdmin()
+    .from("applications")
+    .update({
+      status: "interview_transcribed",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.applicationId);
+  if (statusError) throw new Error(statusError.message);
+}
+
 export async function saveVoiceInterview(input: {
   applicationId: string;
   transcript: ChatMessage[];
