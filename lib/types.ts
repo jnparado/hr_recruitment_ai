@@ -30,6 +30,7 @@ export interface InterviewSetup {
   candidateName: string;
   jobTitle: string;
   jobDescription: string;
+  resumeText?: string;
   applicationId?: string;
 }
 

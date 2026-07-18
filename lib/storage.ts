@@ -1,4 +1,5 @@
 import { RESUME_BUCKET, supabaseAdmin } from "@/lib/supabase";
+import { extractResumeTextFromBuffer } from "@/lib/extract";
 
 export interface StoredFile {
   fileName: string;
@@ -72,7 +73,19 @@ export async function uploadResumes(files: File[]): Promise<StoredFile[]> {
   return uploadFiles(files, (file) => uploadResume(file));
 }
 
-/** Looks up the stored file for a file name. */
+/** Downloads a stored resume and extracts plain text for AI interview context. */
+export async function downloadResumeText(storagePath: string): Promise<string> {
+  const supabase = supabaseAdmin();
+  const { data, error } = await supabase.storage.from(RESUME_BUCKET).download(storagePath);
+  if (error || !data) {
+    throw new Error(`Failed to download resume: ${error?.message ?? "file not found"}`);
+  }
+
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const fileName = storagePath.split("/").pop() || "resume.pdf";
+  return extractResumeTextFromBuffer(buffer, fileName);
+}
+
 export function storageForFile(
   stored: StoredFile[],
   fileName: string

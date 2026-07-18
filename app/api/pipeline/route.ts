@@ -1,4 +1,4 @@
-import { cursorJson } from "@/lib/cursor";
+import { aiJson } from "@/lib/ai";
 import { extractResumeText } from "@/lib/extract";
 import { storageForFile, uploadResumes } from "@/lib/storage";
 import type {
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
     files.map(async (file) => {
       try {
         const resumeText = await extractResumeText(file);
-        const data = await cursorJson<ExtractMatchResponse>(
+        const data = await aiJson<ExtractMatchResponse>(
           EXTRACT_AND_MATCH_PROMPT,
           `JOB OPENINGS:\n${jobsContext}\n\nRESUME (${file.name}):\n${resumeText}`
         );
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
       .join("\n\n");
 
     const today = new Date().toISOString().slice(0, 10);
-    const result = await cursorJson<{
+    const result = await aiJson<{
       schedule: InterviewSchedule[];
       report: typeof reportPartial;
     }>(

@@ -1,4 +1,4 @@
-import { cursorJson } from "@/lib/cursor";
+import { aiJson } from "@/lib/ai";
 import { extractText } from "unpdf";
 import type { ParsedCandidate, SkillGap } from "@/lib/types";
 
@@ -56,7 +56,7 @@ export async function parseResumeFromBuffer(
   const cleaned = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
   if (!cleaned) throw new Error("Could not extract text from resume.");
 
-  return cursorJson<ParsedCandidate>(
+  return aiJson<ParsedCandidate>(
     PARSE_PROMPT,
     `RESUME (${fileName}):\n${cleaned.slice(0, 24000)}`
   );
@@ -73,7 +73,7 @@ export async function matchCandidateToJob(
   fitSummary: string;
   recommendation: string;
 }> {
-  return cursorJson(
+  return aiJson(
     MATCH_PROMPT,
     `JOB: ${jobTitle}\nDESCRIPTION:\n${jobDescription}\n\nCANDIDATE:\n${JSON.stringify(candidate, null, 2)}`
   );

@@ -1,10 +1,13 @@
-import { cursorJson } from "@/lib/cursor";
+import { aiJson } from "@/lib/ai";
+import { enrichInterviewSetup } from "@/lib/interview-context";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
-export const maxDuration = 180;
+export const maxDuration = 90;
 
 const SYSTEM_PROMPT = `You are a senior recruiter evaluating the transcript of a first screening interview.
-Based ONLY on the transcript, respond with ONLY a JSON object of this exact shape:
+You also have the candidate's resume and the job description for context.
+Compare what the candidate said in the interview against their resume and the role requirements.
+Based ONLY on the transcript (cross-referenced with the resume when relevant), respond with ONLY a JSON object of this exact shape:
 
 {
   "overallScore": number,             // 0-100 overall candidate score for this role
@@ -23,6 +26,7 @@ Based ONLY on the transcript, respond with ONLY a JSON object of this exact shap
 }
 
 Be calibrated and honest. Short, evasive, or off-topic answers should lower scores.
+Note inconsistencies between resume claims and interview answers in concerns.
 Guidance: advance if overallScore >= 70 and no critical concerns, reject if below 45, otherwise maybe.`;
 
 export async function POST(request: Request) {
@@ -31,7 +35,7 @@ export async function POST(request: Request) {
     messages?: ChatMessage[];
   } | null;
 
-  if (!body?.setup?.jobTitle || !body.messages || body.messages.length < 2) {
+  if ((!body?.setup?.jobTitle && !body?.setup?.applicationId) || !body.messages || body.messages.length < 2) {
     return Response.json(
       { error: "A completed interview transcript is required." },
       { status: 400 }
@@ -43,14 +47,31 @@ export async function POST(request: Request) {
     .join("\n\n");
 
   try {
-    const evaluation = await cursorJson<InterviewEvaluation>(
+    const setup = await enrichInterviewSetup(body.setup!);
+    const resumeSection = setup.resumeText?.trim()
+      ? setup.resumeText.trim()
+      : "(not available)";
+
+    const evaluation = await aiJson<InterviewEvaluation>(
       SYSTEM_PROMPT,
-      `Role: ${body.setup.jobTitle}\nCandidate: ${body.setup.candidateName || "Unknown"}\nJob description:\n${body.setup.jobDescription || "(not provided)"}\n\nTRANSCRIPT:\n${transcript}`
+      `Role: ${setup.jobTitle}
+Candidate: ${setup.candidateName || "Unknown"}
+
+Job description:
+${setup.jobDescription || "(not provided)"}
+
+Candidate resume:
+---
+${resumeSection}
+---
+
+TRANSCRIPT:
+${transcript}`
     );
     return Response.json(evaluation);
   } catch (err) {
     return Response.json(
-      { error: err instanceof Error ? err.message : "Cursor request failed." },
+      { error: err instanceof Error ? err.message : "Evaluation request failed." },
       { status: 500 }
     );
   }

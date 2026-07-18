@@ -1,4 +1,7 @@
 import { getApplication, getVoiceInterview } from "@/lib/db";
+import { loadInterviewContext } from "@/lib/interview-context";
+
+export const maxDuration = 60;
 
 export async function GET(
   _request: Request,
@@ -12,12 +15,17 @@ export async function GET(
       return Response.json({ error: "Application not found." }, { status: 404 });
     }
 
-    const voiceInterview = await getVoiceInterview(id).catch(() => null);
+    const [voiceInterview, interviewContext] = await Promise.all([
+      getVoiceInterview(id).catch(() => null),
+      loadInterviewContext(id).catch(() => null),
+    ]);
 
     return Response.json({
       applicationId: application.id,
       candidateName: application.applicant_name,
       jobTitle: application.job_title,
+      jobDescription: interviewContext?.jobDescription ?? "",
+      resumeText: interviewContext?.resumeText ?? "",
       status: application.status,
       alreadyInterviewed: !!voiceInterview,
     });

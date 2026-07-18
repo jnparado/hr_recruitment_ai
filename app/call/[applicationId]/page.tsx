@@ -18,6 +18,8 @@ export default function CallPage() {
   const [phase, setPhase] = useState<Phase>(invalidLink ? "incoming" : "loading");
   const [candidateName, setCandidateName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [resumeText, setResumeText] = useState("");
   const [alreadyDone, setAlreadyDone] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(null);
@@ -36,6 +38,8 @@ export default function CallPage() {
         if (d.error) throw new Error(d.error);
         setCandidateName(d.candidateName);
         setJobTitle(d.jobTitle);
+        setJobDescription(d.jobDescription || "");
+        setResumeText(d.resumeText || "");
         setAlreadyDone(d.alreadyInterviewed);
         setPhase(d.alreadyInterviewed ? "complete" : "incoming");
       })
@@ -105,8 +109,15 @@ export default function CallPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          setup: { candidateName, jobTitle, jobDescription: "" },
+          setup: {
+            applicationId,
+            candidateName,
+            jobTitle,
+            jobDescription,
+            resumeText,
+          },
           messages: history,
+          convId: applicationId,
         }),
       });
       const data = await res.json();
@@ -130,7 +141,13 @@ export default function CallPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          setup: { candidateName, jobTitle, jobDescription: "" },
+          setup: {
+            applicationId,
+            candidateName,
+            jobTitle,
+            jobDescription,
+            resumeText,
+          },
           messages: history,
         }),
       });
@@ -205,8 +222,9 @@ export default function CallPage() {
           <h1 className="mt-1 text-2xl font-bold text-slate-900">{candidateName || "Candidate"}</h1>
           <p className="text-slate-500">{jobTitle || "Screening interview"}</p>
           <p className="mt-4 max-w-sm text-center text-sm text-slate-600">
-            Our AI interviewer will ask about your experience, skills, salary expectations, and
-            availability. Allow microphone access when prompted.
+            Our AI interviewer has read your resume and will ask personalized questions about
+            your experience, skills, salary expectations, and availability. Allow microphone
+            access when prompted.
           </p>
           <button
             onClick={acceptCall}
