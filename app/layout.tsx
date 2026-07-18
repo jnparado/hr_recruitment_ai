@@ -40,6 +40,18 @@ export default function RootLayout({
             </Link>
             <nav className="flex items-center gap-1 text-sm font-medium text-slate-600">
               <Link
+                href="/dashboard"
+                className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/careers"
+                className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                Careers
+              </Link>
+              <Link
                 href="/pipeline"
                 className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
               >

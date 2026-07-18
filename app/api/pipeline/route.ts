@@ -28,6 +28,9 @@ Given resume text and a list of job openings, respond with ONLY a JSON object:
   "certificates": [
     { "name": string, "issuer": string, "year": string }
   ],
+  "education": [
+    { "degree": string, "institution": string, "year": string, "field": string }
+  ],
   "jobMatches": [
     {
       "jobId": string,
@@ -42,7 +45,7 @@ Given resume text and a list of job openings, respond with ONLY a JSON object:
 }
 
 Rules:
-- Extract ALL skills, work experience entries, and certificates/credentials from the resume.
+- Extract ALL skills, work experience entries, education, and certificates/credentials from the resume.
 - Score each job 0-100 based on fit. Be calibrated and honest.
 - Include one jobMatches entry per job opening provided (use the exact jobId).
 - If a field is missing from the resume, use "" or [] or 0 as appropriate.`;
@@ -99,6 +102,7 @@ interface ExtractMatchResponse {
   skills: string[];
   experience: ExtractedResume["experience"];
   certificates: ExtractedResume["certificates"];
+  education: ExtractedResume["education"];
   jobMatches: {
     jobId: string;
     matchScore: number;
@@ -163,6 +167,7 @@ function rankCandidates(
         skills: e.data.skills,
         experience: e.data.experience,
         certificates: e.data.certificates,
+        education: e.data.education ?? [],
         storagePath: storage.storagePath,
         storageUrl: storage.storageUrl,
         rank: 0,
@@ -239,6 +244,7 @@ export async function POST(request: Request) {
         skills: [],
         experience: [],
         certificates: [],
+        education: [],
         storagePath: storage.storagePath,
         storageUrl: storage.storageUrl,
         error: (r as { error?: string }).error,
@@ -254,6 +260,7 @@ export async function POST(request: Request) {
       skills: r.data.skills,
       experience: r.data.experience,
       certificates: r.data.certificates,
+      education: r.data.education ?? [],
       storagePath: storage.storagePath,
       storageUrl: storage.storageUrl,
     };

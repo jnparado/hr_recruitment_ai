@@ -30,6 +30,21 @@ export interface InterviewSetup {
   candidateName: string;
   jobTitle: string;
   jobDescription: string;
+  applicationId?: string;
+}
+
+export interface DashboardCandidate {
+  applicationId: string;
+  candidateName: string;
+  email: string;
+  jobTitle: string;
+  status: string;
+  resumeMatchScore: number | null;
+  rank: number | null;
+  interviewScore: number | null;
+  recommendation: string | null;
+  appliedAt: string;
+  interviewCompletedAt: string | null;
 }
 
 export interface InterviewEvaluation {
@@ -63,6 +78,25 @@ export interface CertificateEntry {
   year: string;
 }
 
+export interface EducationEntry {
+  degree: string;
+  institution: string;
+  year: string;
+  field: string;
+}
+
+export interface ParsedCandidate {
+  name: string;
+  email: string;
+  phone: string;
+  currentRole: string;
+  yearsOfExperience: number;
+  skills: string[];
+  experience: ExperienceEntry[];
+  education: EducationEntry[];
+  certificates: CertificateEntry[];
+}
+
 export interface ExtractedResume {
   fileName: string;
   candidateName: string;
@@ -72,6 +106,7 @@ export interface ExtractedResume {
   yearsOfExperience: number;
   skills: string[];
   experience: ExperienceEntry[];
+  education: EducationEntry[];
   certificates: CertificateEntry[];
   storagePath?: string;
   storageUrl?: string;
@@ -89,6 +124,32 @@ export interface JobOpening {
   id: string;
   title: string;
   description: string;
+}
+
+export interface DbJob {
+  id: string;
+  title: string;
+  department: string;
+  location: string;
+  type: string;
+  description: string;
+  requirements: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface DbApplication {
+  id: string;
+  job_id: string | null;
+  job_title: string;
+  applicant_name: string;
+  applicant_email: string;
+  resume_path: string;
+  resume_url: string;
+  status: string;
+  match_score: number | null;
+  rank: number | null;
+  created_at: string;
 }
 
 export interface CandidateJobMatch {

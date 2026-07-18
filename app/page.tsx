@@ -9,7 +9,32 @@ const pipelineSteps = [
   "Recruiter Report",
 ];
 
+const careerFlow = [
+  "Candidate Applies",
+  "AI Calls Candidate",
+  "Voice Interview",
+  "Speech to Text",
+  "Grok AI",
+  "Evaluate Answers",
+  "Score",
+  "Recruiter Dashboard",
+];
+
 const features = [
+  {
+    href: "/careers",
+    title: "Career Website",
+    description:
+      "Public careers page where candidates browse open roles and apply with a PDF resume. Applications flow through Supabase Storage and trigger n8n automation.",
+    bullets: [
+      "Candidate apply form (PDF upload)",
+      "Stored in Supabase Storage",
+      "Triggers n8n workflow",
+      "AI parses name, skills, experience, education, certificates",
+    ],
+    cta: "View careers",
+    primary: true,
+  },
   {
     href: "/pipeline",
     title: "Recruitment Pipeline",
@@ -22,7 +47,6 @@ const features = [
       "Generate executive recruiter report",
     ],
     cta: "Run pipeline",
-    primary: true,
   },
   {
     href: "/screening",
@@ -63,17 +87,33 @@ export default function Home() {
           match jobs, rank candidates, schedule interviews, and deliver recruiter reports.
         </p>
         <Link
-          href="/pipeline"
+          href="/careers"
           className="mt-6 inline-flex items-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
         >
-          Start recruitment pipeline →
+          Browse open roles →
         </Link>
       </section>
 
       {/* Pipeline flow */}
       <section className="mt-14">
         <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-slate-500">
-          How it works
+          Candidate application flow
+        </h2>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
+          {careerFlow.map((step, i) => (
+            <span key={step} className="flex items-center gap-2">
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm">
+                {step}
+              </span>
+              {i < careerFlow.length - 1 && <span className="text-slate-300">↓</span>}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-14">
+        <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Recruiter tools
         </h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
           {pipelineSteps.map((step, i) => (
@@ -89,7 +129,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mt-14 grid gap-6 md:grid-cols-3">
+      <section className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {features.map((f) => (
           <div
             key={f.href}
