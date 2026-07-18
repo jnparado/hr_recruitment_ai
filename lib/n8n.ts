@@ -1,3 +1,5 @@
+import { appBaseUrl } from "@/lib/app-url";
+
 /** Triggers the n8n workflow when a new application is received. */
 export async function triggerN8nApplication(payload: {
   applicationId: string;
@@ -10,6 +12,8 @@ export async function triggerN8nApplication(payload: {
 }): Promise<{ triggered: boolean; error?: string }> {
   const url = process.env.N8N_WEBHOOK_URL;
   if (!url) return { triggered: false, error: "N8N_WEBHOOK_URL not configured" };
+
+  const base = appBaseUrl();
 
   try {
     const res = await fetch(url, {
@@ -24,11 +28,11 @@ export async function triggerN8nApplication(payload: {
         event: "application.received",
         timestamp: new Date().toISOString(),
         ...payload,
-        processUrl: `${appBaseUrl()}/api/webhooks/n8n/process`,
-        rankUrl: `${appBaseUrl()}/api/webhooks/n8n/rank`,
-        scheduleUrl: `${appBaseUrl()}/api/webhooks/n8n/schedule`,
-        notifyUrl: `${appBaseUrl()}/api/webhooks/n8n/notify`,
-        voiceInterviewUrl: `${appBaseUrl()}/call/${payload.applicationId}`,
+        processUrl: `${base}/api/webhooks/n8n/process`,
+        rankUrl: `${base}/api/webhooks/n8n/rank`,
+        scheduleUrl: `${base}/api/webhooks/n8n/schedule`,
+        notifyUrl: `${base}/api/webhooks/n8n/notify`,
+        voiceInterviewUrl: `${base}/call/${payload.applicationId}`,
       }),
     });
     if (!res.ok) {
@@ -42,10 +46,6 @@ export async function triggerN8nApplication(payload: {
       error: err instanceof Error ? err.message : "n8n trigger failed",
     };
   }
-}
-
-function appBaseUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
 export function recruiterEmailPayload(input: {

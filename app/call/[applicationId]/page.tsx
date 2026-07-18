@@ -13,8 +13,9 @@ type VoiceState = "idle" | "speaking" | "recording" | "transcribing";
 export default function CallPage() {
   const params = useParams();
   const applicationId = String(params.applicationId || "");
+  const invalidLink = !applicationId || applicationId === "undefined";
 
-  const [phase, setPhase] = useState<Phase>("loading");
+  const [phase, setPhase] = useState<Phase>(invalidLink ? "incoming" : "loading");
   const [candidateName, setCandidateName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [alreadyDone, setAlreadyDone] = useState(false);
@@ -28,6 +29,8 @@ export default function CallPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (invalidLink) return;
+
     fetch(`/api/applications/${applicationId}`)
       .then((r) => r.json())
       .then((d) => {
@@ -41,7 +44,7 @@ export default function CallPage() {
         setError(err instanceof Error ? err.message : "Could not load application.");
         setPhase("incoming");
       });
-  }, [applicationId]);
+  }, [applicationId, invalidLink]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -198,9 +201,10 @@ export default function CallPage() {
         />
       </div>
 
-      {error && (
+      {(error || invalidLink) && (
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-          {error}
+          {error ||
+            "Invalid interview link. Please apply again from the careers page."}
         </div>
       )}
 
@@ -228,7 +232,8 @@ export default function CallPage() {
           </p>
           <button
             onClick={acceptCall}
-            className="mt-8 rounded-full bg-emerald-500 px-10 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-400"
+            disabled={invalidLink}
+            className="mt-8 rounded-full bg-emerald-500 px-10 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             Accept call
           </button>

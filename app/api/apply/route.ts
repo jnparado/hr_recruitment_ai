@@ -1,4 +1,5 @@
 import { createApplication } from "@/lib/db";
+import { appOriginFromRequest } from "@/lib/app-url";
 import { triggerN8nApplication } from "@/lib/n8n";
 import { resolveJob } from "@/lib/jobs";
 import { uploadResume } from "@/lib/storage";
@@ -78,11 +79,14 @@ export async function POST(request: Request) {
     resumePath: storedResume.storagePath,
   });
 
+  const origin = appOriginFromRequest(request);
+
   return Response.json({
     success: true,
     applicationId,
     resumeUrl: storedResume.storageUrl,
-    voiceInterviewUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/call/${applicationId}`,
+    voiceInterviewUrl: `/call/${applicationId}`,
+    voiceInterviewAbsoluteUrl: `${origin}/call/${applicationId}`,
     n8nTriggered: n8n.triggered,
     n8nError: n8n.error,
     message: "Application received! Start your AI voice screening interview below.",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { CareerFlowDiagram } from "@/app/_components/CareerFlowDiagram";
 import type { DbJob } from "@/lib/types";
 
@@ -14,6 +15,7 @@ export default function CareersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [voiceInterviewUrl, setVoiceInterviewUrl] = useState<string | null>(null);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,6 +32,7 @@ export default function CareersPage() {
     setSelectedJob(job);
     setSuccess(null);
     setVoiceInterviewUrl(null);
+    setApplicationId(null);
     setError(null);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   }
@@ -41,6 +44,7 @@ export default function CareersPage() {
     setError(null);
     setSuccess(null);
     setVoiceInterviewUrl(null);
+    setApplicationId(null);
     try {
       const form = new FormData();
       form.set("jobId", selectedJob.id);
@@ -51,7 +55,8 @@ export default function CareersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Application failed.");
       setSuccess(data.message);
-      setVoiceInterviewUrl(data.voiceInterviewUrl ?? null);
+      setApplicationId(data.applicationId ?? null);
+      setVoiceInterviewUrl(data.voiceInterviewUrl ?? `/call/${data.applicationId}`);
       setName("");
       setEmail("");
       setResume(null);
@@ -125,13 +130,13 @@ export default function CareersPage() {
           {success && (
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
               <p>{success}</p>
-              {voiceInterviewUrl && (
-                <a
-                  href={voiceInterviewUrl}
+              {(applicationId || voiceInterviewUrl) && (
+                <Link
+                  href={voiceInterviewUrl || `/call/${applicationId}`}
                   className="mt-3 inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
                 >
                   Start AI voice interview →
-                </a>
+                </Link>
               )}
             </div>
           )}
