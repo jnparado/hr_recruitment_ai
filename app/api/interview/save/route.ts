@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     messages?: ChatMessage[];
     evaluation?: InterviewEvaluation;
     transcriptOnly?: boolean;
+    recordingUrl?: string;
   } | null;
 
   if (!body?.applicationId || !body.messages?.length) {
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       applicationId: body.applicationId,
       transcript: body.messages,
       evaluation: body.evaluation,
+      recordingUrl: body.recordingUrl,
     });
     return Response.json({ saved: true, stage: "complete" });
   } catch (err) {

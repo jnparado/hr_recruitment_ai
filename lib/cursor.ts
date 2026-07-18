@@ -1,8 +1,10 @@
+import OpenAI from "openai";
 import type { ChatMessage } from "@/lib/types";
 
 const CURSOR_API_BASE = "https://api.cursor.com/v1";
 
 export const CURSOR_MODEL = process.env.CURSOR_MODEL || "composer-2.5";
+export const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 type CursorRun = {
   id: string;
@@ -25,8 +27,25 @@ function agentCache() {
   return globalAgents.__cursorInterviewAgents;
 }
 
+function openaiApiKey() {
+  return process.env.OPENAI_API_KEY?.trim() || "";
+}
+
 function cursorApiKey() {
-  const key = process.env.CURSOR_API_KEY?.trim();
+  return process.env.CURSOR_API_KEY?.trim() || "";
+}
+
+/** Prefer OpenAI when OPENAI_API_KEY is set; otherwise Cursor. */
+export function aiProvider(): "openai" | "cursor" {
+  if (openaiApiKey()) return "openai";
+  if (cursorApiKey()) return "cursor";
+  throw new Error(
+    "No AI provider configured. Set OPENAI_API_KEY or CURSOR_API_KEY in .env.local."
+  );
+}
+
+function requireCursorKey() {
+  const key = cursorApiKey();
   if (!key) {
     throw new Error(
       "CURSOR_API_KEY is not set. Add it to .env.local (Cursor Dashboard → Integrations)."
@@ -35,12 +54,22 @@ function cursorApiKey() {
   return key;
 }
 
+function openaiClient() {
+  const key = openaiApiKey();
+  if (!key) {
+    throw new Error(
+      "OPENAI_API_KEY is not set. Add it to .env.local (https://platform.openai.com/api-keys)."
+    );
+  }
+  return new OpenAI({ apiKey: key });
+}
+
 function authHeader(apiKey: string) {
   return `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`;
 }
 
 async function cursorFetch(path: string, init?: RequestInit) {
-  const apiKey = cursorApiKey();
+  const apiKey = requireCursorKey();
   const res = await fetch(`${CURSOR_API_BASE}${path}`, {
     ...init,
     headers: {
@@ -98,7 +127,23 @@ async function archiveAgent(agentId: string) {
   await cursorFetch(`/agents/${agentId}/archive`, { method: "POST" }).catch(() => {});
 }
 
-/** Send a one-shot prompt to a Cursor cloud agent (no repo). */
+async function openaiJsonPrompt(system: string, user: string): Promise<string> {
+  const client = openaiClient();
+  const completion = await client.chat.completions.create({
+    model: OPENAI_MODEL,
+    temperature: 0.3,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+  });
+  const raw = completion.choices[0]?.message?.content?.trim();
+  if (!raw) throw new Error("OpenAI returned an empty response.");
+  return raw;
+}
+
+/** Send a one-shot prompt to Cursor cloud agent (no repo). */
 export async function cursorPrompt(text: string, sessionId?: string): Promise<string> {
   if (sessionId) {
     const cached = agentCache().get(sessionId);
@@ -139,6 +184,7 @@ export async function cursorPrompt(text: string, sessionId?: string): Promise<st
 
 /** End a multi-turn interview session and release the Cursor agent. */
 export async function cursorEndSession(sessionId: string) {
+  if (aiProvider() === "openai") return;
   const cached = agentCache().get(sessionId);
   if (!cached) return;
   agentCache().delete(sessionId);
@@ -165,11 +211,11 @@ export function extractJson<T>(text: string): T {
       return JSON.parse(trimmed.slice(arrStart, arrEnd + 1)) as T;
     }
 
-    throw new Error("Could not parse JSON from Cursor response.");
+    throw new Error("Could not parse JSON from AI response.");
   }
 }
 
-/** One-shot JSON completion via Cursor. */
+/** One-shot JSON completion via OpenAI (preferred) or Cursor. */
 export async function cursorJson<T>(system: string, user: string): Promise<T> {
   const prompt = [
     system,
@@ -179,11 +225,19 @@ export async function cursorJson<T>(system: string, user: string): Promise<T> {
     user,
   ].join("\n");
 
+  if (aiProvider() === "openai") {
+    const raw = await openaiJsonPrompt(
+      "You are an HR AI assistant. Always respond with valid JSON only.",
+      prompt
+    );
+    return extractJson<T>(raw);
+  }
+
   const raw = await cursorPrompt(prompt);
   return extractJson<T>(raw);
 }
 
-/** Multi-turn JSON completion — reuses one Cursor agent per sessionId when provided. */
+/** Multi-turn JSON completion — OpenAI or Cursor agent session. */
 export async function cursorChatJson<T>(
   system: string,
   history: ChatMessage[],
@@ -208,6 +262,14 @@ export async function cursorChatJson<T>(
     "",
     user,
   ].join("\n");
+
+  if (aiProvider() === "openai") {
+    const raw = await openaiJsonPrompt(
+      "You are an AI interviewer. Always respond with valid JSON only.",
+      prompt
+    );
+    return extractJson<T>(raw);
+  }
 
   const raw = await cursorPrompt(prompt, sessionId);
   return extractJson<T>(raw);

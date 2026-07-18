@@ -87,14 +87,16 @@ export async function updateApplicationStatus(
   matchScore?: number,
   rank?: number
 ): Promise<void> {
+  const patch: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  if (matchScore !== undefined) patch.match_score = matchScore;
+  if (rank !== undefined) patch.rank = rank;
+
   const { error } = await supabaseAdmin()
     .from("applications")
-    .update({
-      status,
-      match_score: matchScore ?? null,
-      rank: rank ?? null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(patch)
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -212,12 +214,18 @@ export async function saveVoiceInterview(input: {
   applicationId: string;
   transcript: ChatMessage[];
   evaluation: InterviewEvaluation;
+  recordingUrl?: string;
 }): Promise<void> {
+  const evaluation = {
+    ...input.evaluation,
+    ...(input.recordingUrl ? { recordingUrl: input.recordingUrl } : {}),
+  };
+
   const { error: viError } = await supabaseAdmin().from("voice_interviews").upsert(
     {
       application_id: input.applicationId,
       transcript: input.transcript,
-      evaluation: input.evaluation,
+      evaluation,
       overall_score: input.evaluation.overallScore,
       recommendation: input.evaluation.recommendation,
       completed_at: new Date().toISOString(),

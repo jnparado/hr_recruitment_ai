@@ -31,6 +31,9 @@ export default function CallPage() {
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<BrowserSpeechRecognizer | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sessionRecorderRef = useRef<MediaRecorder | null>(null);
+  const sessionChunksRef = useRef<Blob[]>([]);
+  const sessionStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (invalidLink) return;
@@ -56,7 +59,53 @@ export default function CallPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, voiceState, thinking]);
 
-  useEffect(() => () => stopBrowserSpeech(), []);
+  useEffect(() => () => {
+    stopBrowserSpeech();
+    sessionRecorderRef.current?.stop();
+    sessionStreamRef.current?.getTracks().forEach((t) => t.stop());
+  }, []);
+
+  async function startSessionRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      sessionStreamRef.current = stream;
+      sessionChunksRef.current = [];
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType: mime });
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) sessionChunksRef.current.push(e.data);
+      };
+      recorder.start(1000);
+      sessionRecorderRef.current = recorder;
+    } catch {
+      // Interview can continue without a saved audio file
+    }
+  }
+
+  async function stopSessionRecording(): Promise<Blob | null> {
+    const recorder = sessionRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") {
+      sessionStreamRef.current?.getTracks().forEach((t) => t.stop());
+      return null;
+    }
+    return new Promise((resolve) => {
+      recorder.onstop = () => {
+        sessionStreamRef.current?.getTracks().forEach((t) => t.stop());
+        sessionStreamRef.current = null;
+        sessionRecorderRef.current = null;
+        const chunks = sessionChunksRef.current;
+        sessionChunksRef.current = [];
+        if (!chunks.length) {
+          resolve(null);
+          return;
+        }
+        resolve(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+      };
+      recorder.stop();
+    });
+  }
 
   function stopSpeaking() {
     stopBrowserSpeech();
@@ -149,6 +198,24 @@ export default function CallPage() {
     setSaveStage("transcript");
     setError(null);
     try {
+      const audioBlob = await stopSessionRecording();
+      let recordingUrl: string | undefined;
+      if (audioBlob && audioBlob.size > 0) {
+        try {
+          const form = new FormData();
+          form.set("applicationId", applicationId);
+          form.set("audio", audioBlob, "interview.webm");
+          const up = await fetch("/api/interview/recording", {
+            method: "POST",
+            body: form,
+          });
+          const upData = await up.json();
+          if (up.ok && upData.recordingUrl) recordingUrl = upData.recordingUrl;
+        } catch {
+          // Keep going — transcript is still saved
+        }
+      }
+
       const saveRes = await fetch("/api/interview/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -188,6 +255,7 @@ export default function CallPage() {
           applicationId,
           messages: history,
           evaluation: evalData,
+          recordingUrl,
         }),
       });
       const fullSaveData = await fullSaveRes.json();
@@ -209,6 +277,7 @@ export default function CallPage() {
   function acceptCall() {
     setPhase("interview");
     setMessages([]);
+    void startSessionRecording();
     void fetchNext([]);
   }
 

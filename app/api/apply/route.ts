@@ -1,7 +1,9 @@
+import { after } from "next/server";
 import { createApplication } from "@/lib/db";
 import { appOriginFromRequest } from "@/lib/app-url";
 import { triggerN8nApplication } from "@/lib/n8n";
 import { resolveJob } from "@/lib/jobs";
+import { scoreApplication } from "@/lib/score-application";
 import { uploadResume } from "@/lib/storage";
 
 export const maxDuration = 60;
@@ -68,6 +70,15 @@ export async function POST(request: Request) {
       { status: 502 }
     );
   }
+
+  // Score resume vs job in the background so the dashboard gets a resume score
+  after(async () => {
+    try {
+      await scoreApplication(applicationId);
+    } catch (err) {
+      console.error("[apply] resume scoring failed:", err);
+    }
+  });
 
   const n8n = await triggerN8nApplication({
     applicationId,

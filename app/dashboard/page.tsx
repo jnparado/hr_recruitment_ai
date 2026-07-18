@@ -23,35 +23,83 @@ export default function DashboardPage() {
   const [candidates, setCandidates] = useState<DashboardCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [scoringId, setScoringId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/dashboard");
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.error || "Failed to load dashboard.");
+      setCandidates(d.candidates ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.error) throw new Error(d.error);
-        setCandidates(d.candidates ?? []);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load dashboard."))
-      .finally(() => setLoading(false));
+    void load();
   }, []);
 
+  async function scoreResume(applicationId: string) {
+    setScoringId(applicationId);
+    setError(null);
+    try {
+      const r = await fetch(`/api/applications/${applicationId}/score`, {
+        method: "POST",
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Scoring failed.");
+      setCandidates((prev) =>
+        prev.map((c) =>
+          c.applicationId === applicationId
+            ? {
+                ...c,
+                resumeMatchScore: d.matchScore,
+                status: "scored",
+              }
+            : c
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Scoring failed.");
+    } finally {
+      setScoringId(null);
+    }
+  }
+
   const interviewed = candidates.filter((c) => c.interviewScore != null);
+  const scored = candidates.filter((c) => c.resumeMatchScore != null);
+  const avgResume =
+    scored.length > 0
+      ? Math.round(
+          scored.reduce((s, c) => s + (c.resumeMatchScore ?? 0), 0) / scored.length
+        )
+      : 0;
   const avgScore =
     interviewed.length > 0
-      ? Math.round(interviewed.reduce((s, c) => s + (c.interviewScore ?? 0), 0) / interviewed.length)
+      ? Math.round(
+          interviewed.reduce((s, c) => s + (c.interviewScore ?? 0), 0) /
+            interviewed.length
+        )
       : 0;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Recruiter Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            Recruiter Dashboard
+          </h1>
           <p className="mt-2 text-slate-600">
-            Candidates who applied, completed AI voice interviews, and were scored by Cursor.
+            Resume match scores and AI voice interview results for every applicant.
           </p>
         </div>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => void load()}
           className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
         >
           Refresh
@@ -62,14 +110,26 @@ export default function DashboardPage() {
         <RecruiterFlowDiagram activeStep="Recruiter Report" variant="compact" />
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+      <div className="mt-8 grid gap-4 sm:grid-cols-4">
         {[
           { label: "Total applications", value: candidates.length },
+          {
+            label: "Avg resume score",
+            value: scored.length ? `${avgResume}/100` : "—",
+          },
           { label: "Voice interviews done", value: interviewed.length },
-          { label: "Avg interview score", value: interviewed.length ? `${avgScore}/100` : "—" },
+          {
+            label: "Avg interview score",
+            value: interviewed.length ? `${avgScore}/100` : "—",
+          },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.label}</p>
+          <div
+            key={s.label}
+            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              {s.label}
+            </p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{s.value}</p>
           </div>
         ))}
@@ -78,7 +138,6 @@ export default function DashboardPage() {
       {error && (
         <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
           {error}
-          <p className="mt-1 text-xs">Run <code className="rounded bg-rose-100 px-1">supabase/schema.sql</code> if tables are missing.</p>
         </div>
       )}
 
@@ -111,7 +170,10 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {candidates.map((c) => (
-                <tr key={c.applicationId} className="border-b border-slate-100 hover:bg-slate-50/50">
+                <tr
+                  key={c.applicationId}
+                  className="border-b border-slate-100 hover:bg-slate-50/50"
+                >
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-900">{c.candidateName}</p>
                     <p className="text-xs text-slate-500">{c.email}</p>
@@ -123,14 +185,16 @@ export default function DashboardPage() {
                     </span>
                   </td>
                   <td className={`px-4 py-3 font-semibold ${scoreClass(c.resumeMatchScore)}`}>
-                    {c.resumeMatchScore ?? "—"}
+                    {c.resumeMatchScore != null ? `${c.resumeMatchScore}/100` : "—"}
                   </td>
                   <td className={`px-4 py-3 font-semibold ${scoreClass(c.interviewScore)}`}>
-                    {c.interviewScore ?? "—"}
+                    {c.interviewScore != null ? `${c.interviewScore}/100` : "—"}
                   </td>
                   <td className="px-4 py-3">
                     {c.recommendation ? (
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${recBadge(c.recommendation)}`}>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${recBadge(c.recommendation)}`}
+                      >
                         {c.recommendation}
                       </span>
                     ) : (
@@ -141,14 +205,36 @@ export default function DashboardPage() {
                     {new Date(c.appliedAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
-                    {c.status !== "interview_completed" && (
-                      <Link
-                        href={`/call/${c.applicationId}`}
-                        className="text-xs font-semibold text-indigo-600 hover:underline"
-                      >
-                        Send AI call →
-                      </Link>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {c.resumeMatchScore == null && (
+                        <button
+                          type="button"
+                          disabled={scoringId === c.applicationId}
+                          onClick={() => void scoreResume(c.applicationId)}
+                          className="text-left text-xs font-semibold text-emerald-700 hover:underline disabled:opacity-60"
+                        >
+                          {scoringId === c.applicationId
+                            ? "Scoring…"
+                            : "Score resume →"}
+                        </button>
+                      )}
+                      {c.interviewScore != null && (
+                        <Link
+                          href={`/dashboard/interviews/${c.applicationId}`}
+                          className="text-xs font-semibold text-emerald-700 hover:underline"
+                        >
+                          Listen to interview →
+                        </Link>
+                      )}
+                      {c.status !== "interview_completed" && (
+                        <Link
+                          href={`/call/${c.applicationId}`}
+                          className="text-xs font-semibold text-indigo-600 hover:underline"
+                        >
+                          Send AI call →
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
