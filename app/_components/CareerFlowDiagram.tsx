@@ -8,7 +8,7 @@ export function CareerFlowDiagram() {
     <FlowDiagram
       title="Voice screening pipeline"
       steps={[...CANDIDATE_FLOW_STEPS]}
-      highlightSteps={["Voice Interview", "Grok AI", "Recruiter Dashboard"]}
+      highlightSteps={["Voice Interview", "OpenAI", "Recruiter Dashboard"]}
       accent="indigo"
     />
   );

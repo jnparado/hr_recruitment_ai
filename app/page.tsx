@@ -37,7 +37,7 @@ const features = [
     href: "/screening",
     title: "AI Resume Screening",
     description:
-      "Upload a batch of resumes against a job description. Grok reads every resume, scores the match, ranks candidates, and flags skill gaps.",
+      "Upload a batch of resumes against a job description. OpenAI reads every resume, scores the match, ranks candidates, and flags skill gaps.",
     bullets: ["Reads PDF, DOCX & TXT resumes", "Matches job descriptions", "Ranks candidates 0–100", "Detects critical skill gaps"],
     cta: "Screen resumes",
   },
@@ -45,8 +45,8 @@ const features = [
     href: "/interview",
     title: "AI Interview Assistant",
     description:
-      "Grok conducts the first screening interview by voice or text — one question at a time — then delivers a candidate score and a clear hire recommendation.",
-    bullets: ["Real voice interviews (Grok TTS + STT)", "Experience & skills deep-dive", "Salary expectations & availability", "Score + advance/reject call"],
+      "OpenAI conducts the first screening interview by voice or text — one question at a time — then delivers a candidate score and a clear hire recommendation.",
+    bullets: ["Real voice interviews (OpenAI TTS + Whisper)", "Experience & skills deep-dive", "Salary expectations & availability", "Score + advance/reject call"],
     cta: "Start an interview",
   },
 ];
@@ -62,7 +62,7 @@ export default function Home() {
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <section className="mx-auto max-w-3xl text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-          Powered by Grok · xAI
+          Powered by OpenAI
         </span>
         <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
           Recruitment on autopilot
@@ -83,7 +83,7 @@ export default function Home() {
         <FlowDiagram
           title="Candidate application flow"
           steps={[...CANDIDATE_FLOW_STEPS]}
-          highlightSteps={["Voice Interview", "Grok AI", "Recruiter Dashboard"]}
+          highlightSteps={["Voice Interview", "OpenAI", "Recruiter Dashboard"]}
           accent="indigo"
         />
         <FlowDiagram

@@ -211,7 +211,7 @@ function InterviewContent() {
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">AI Interview Assistant</h1>
       <p className="mt-2 text-slate-600">
-        Grok runs the first screening interview by voice or text — experience,
+        OpenAI runs the first screening interview by voice or text — experience,
         skills, salary expectations, and availability — then scores the candidate
         with a hire recommendation.
       </p>
@@ -254,7 +254,7 @@ function InterviewContent() {
               value={setup.jobDescription}
               onChange={(e) => setSetup({ ...setup, jobDescription: e.target.value })}
               rows={6}
-              placeholder="Paste the job description so Grok can tailor its questions…"
+              placeholder="Paste the job description so OpenAI can tailor its questions…"
               className="mt-2 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
           </div>
@@ -270,7 +270,7 @@ function InterviewContent() {
                 Voice interview
               </span>
               <span className="block text-xs text-slate-500">
-                Grok speaks each question aloud and the candidate answers by voice
+                OpenAI speaks each question aloud and the candidate answers by voice
                 (requires microphone). You can still type answers at any time.
               </span>
             </span>
@@ -339,7 +339,7 @@ function InterviewContent() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-600" />
                 </span>
-                Grok is speaking — click to skip
+                OpenAI is speaking — click to skip
               </button>
             )}
             {voiceState === "transcribing" && (
@@ -350,7 +350,7 @@ function InterviewContent() {
             )}
             {phase === "evaluating" && (
               <div className="self-center py-4 text-sm text-slate-500">
-                Interview complete — Grok is scoring the candidate…
+                Interview complete — OpenAI is scoring the candidate…
               </div>
             )}
             <div ref={bottomRef} />

@@ -188,7 +188,7 @@ export default function CallPage() {
               : phase === "interview"
                 ? "Voice Interview"
                 : phase === "evaluating"
-                  ? "Grok AI"
+                  ? "OpenAI"
                   : phase === "complete"
                     ? "Recruiter Dashboard"
                     : undefined
@@ -241,7 +241,7 @@ export default function CallPage() {
             <p className="text-sm font-semibold text-slate-900">Voice interview — {jobTitle}</p>
             <p className="text-xs text-slate-500">
               {phase === "evaluating"
-                ? "Speech → Text → Grok AI → Scoring…"
+                ? "Speech → Text → OpenAI → Scoring…"
                 : "Speak your answers using the mic button"}
             </p>
           </div>

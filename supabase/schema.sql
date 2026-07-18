@@ -1,4 +1,5 @@
 -- Run this in the Supabase SQL Editor to set up the career application flow.
+-- Then run supabase/policies.sql for Row Level Security on every table.
 
 create table if not exists jobs (
   id uuid primary key default gen_random_uuid(),
@@ -20,6 +21,7 @@ create table if not exists applications (
   applicant_email text not null,
   resume_path text not null,
   resume_url text not null,
+  certificate_files jsonb not null default '[]',
   status text not null default 'received',
   match_score integer,
   rank integer,
@@ -99,7 +101,7 @@ select * from (values
     'Engineering',
     'Remote',
     'Full-time',
-    'Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by Grok and n8n automation.',
+    'Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by OpenAI and n8n automation.',
     'Experience with LLM APIs, prompt engineering, and workflow automation (n8n/Zapier). Python or TypeScript. ML fundamentals.'
   )
 ) as v(title, department, location, type, description, requirements)

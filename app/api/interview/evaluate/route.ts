@@ -1,4 +1,4 @@
-import { grokJson } from "@/lib/grok";
+import { openaiJson } from "@/lib/openai";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
 export const maxDuration = 120;
@@ -43,14 +43,14 @@ export async function POST(request: Request) {
     .join("\n\n");
 
   try {
-    const evaluation = await grokJson<InterviewEvaluation>(
+    const evaluation = await openaiJson<InterviewEvaluation>(
       SYSTEM_PROMPT,
       `Role: ${body.setup.jobTitle}\nCandidate: ${body.setup.candidateName || "Unknown"}\nJob description:\n${body.setup.jobDescription || "(not provided)"}\n\nTRANSCRIPT:\n${transcript}`
     );
     return Response.json(evaluation);
   } catch (err) {
     return Response.json(
-      { error: err instanceof Error ? err.message : "Grok request failed." },
+      { error: err instanceof Error ? err.message : "OpenAI request failed." },
       { status: 500 }
     );
   }

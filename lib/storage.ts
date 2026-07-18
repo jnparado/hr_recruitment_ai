@@ -1,32 +1,38 @@
-import { RESUME_BUCKET, supabaseAdmin } from "@/lib/supabase";
+import { CERTIFICATE_BUCKET, RESUME_BUCKET, supabaseAdmin } from "@/lib/supabase";
 
-export interface StoredResume {
+export interface StoredFile {
   fileName: string;
   storagePath: string;
   storageUrl: string;
   error?: string;
 }
 
+/** @deprecated use StoredFile */
+export type StoredResume = StoredFile;
+
 function sanitizeFileName(name: string) {
   return name.replace(/[^\w.\-() ]/g, "_");
 }
 
-/** Uploads a resume file to the Supabase storage bucket. */
-export async function uploadResume(file: File): Promise<StoredResume> {
+export async function uploadToBucket(
+  bucket: string,
+  file: File,
+  folder: string
+): Promise<StoredFile> {
   const supabase = supabaseAdmin();
-  const storagePath = `resumes/${Date.now()}-${sanitizeFileName(file.name)}`;
+  const storagePath = `${folder}/${Date.now()}-${sanitizeFileName(file.name)}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const { error } = await supabase.storage.from(RESUME_BUCKET).upload(storagePath, buffer, {
+  const { error } = await supabase.storage.from(bucket).upload(storagePath, buffer, {
     contentType: file.type || "application/octet-stream",
     upsert: false,
   });
 
   if (error) {
-    throw new Error(`Failed to upload "${file.name}" to storage: ${error.message}`);
+    throw new Error(`Failed to upload "${file.name}" to ${bucket}: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(RESUME_BUCKET).getPublicUrl(storagePath);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
 
   return {
     fileName: file.name,
@@ -35,12 +41,25 @@ export async function uploadResume(file: File): Promise<StoredResume> {
   };
 }
 
-/** Uploads multiple resumes in parallel. Failures are captured per file. */
-export async function uploadResumes(files: File[]): Promise<StoredResume[]> {
+/** Uploads a resume to the upload_resume bucket. */
+export async function uploadResume(file: File, folder = "resumes"): Promise<StoredFile> {
+  return uploadToBucket(RESUME_BUCKET, file, folder);
+}
+
+/** Uploads a certificate to the certificate bucket. */
+export async function uploadCertificate(file: File, folder = "certificates"): Promise<StoredFile> {
+  return uploadToBucket(CERTIFICATE_BUCKET, file, folder);
+}
+
+/** Uploads multiple files in parallel. Failures are captured per file. */
+export async function uploadFiles(
+  files: File[],
+  uploader: (file: File) => Promise<StoredFile>
+): Promise<StoredFile[]> {
   return Promise.all(
-    files.map(async (file): Promise<StoredResume> => {
+    files.map(async (file): Promise<StoredFile> => {
       try {
-        return await uploadResume(file);
+        return await uploader(file);
       } catch (err) {
         return {
           fileName: file.name,
@@ -53,11 +72,23 @@ export async function uploadResumes(files: File[]): Promise<StoredResume[]> {
   );
 }
 
-/** Looks up the stored resume for a file name. */
+/** @deprecated use uploadFiles */
+export async function uploadResumes(files: File[]): Promise<StoredFile[]> {
+  return uploadFiles(files, (file) => uploadResume(file));
+}
+
+export async function uploadCertificates(
+  files: File[],
+  folder: string
+): Promise<StoredFile[]> {
+  return uploadFiles(files, (file) => uploadCertificate(file, folder));
+}
+
+/** Looks up the stored file for a file name. */
 export function storageForFile(
-  stored: StoredResume[],
+  stored: StoredFile[],
   fileName: string
-): Pick<StoredResume, "storagePath" | "storageUrl"> {
+): Pick<StoredFile, "storagePath" | "storageUrl"> {
   const match = stored.find((s) => s.fileName === fileName && s.storageUrl);
   return {
     storagePath: match?.storagePath ?? "",

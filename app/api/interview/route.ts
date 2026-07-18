@@ -1,4 +1,4 @@
-import { grokJson } from "@/lib/grok";
+import { openaiJson } from "@/lib/openai";
 import type { ChatMessage, InterviewSetup } from "@/lib/types";
 
 export const maxDuration = 120;
@@ -50,14 +50,14 @@ export async function POST(request: Request) {
           .join("\n\n") + "\n\nProvide your next message as the interviewer.";
 
   try {
-    const reply = await grokJson<{ message: string; done: boolean }>(
+    const reply = await openaiJson<{ message: string; done: boolean }>(
       systemPrompt(body.setup),
       transcript
     );
     return Response.json(reply);
   } catch (err) {
     return Response.json(
-      { error: err instanceof Error ? err.message : "Grok request failed." },
+      { error: err instanceof Error ? err.message : "OpenAI request failed." },
       { status: 500 }
     );
   }

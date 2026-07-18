@@ -20,6 +20,7 @@ create table if not exists applications (
   applicant_email text not null,
   resume_path text not null,
   resume_url text not null,
+  certificate_files jsonb not null default '[]',
   status text not null default 'received',
   match_score integer,
   rank integer,
@@ -97,7 +98,7 @@ select * from (values
     'Engineering',
     'Remote',
     'Full-time',
-    'Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by Grok and n8n automation.',
+    'Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by OpenAI and n8n automation.',
     'Experience with LLM APIs, prompt engineering, and workflow automation (n8n/Zapier). Python or TypeScript. ML fundamentals.'
   )
 ) as v(title, department, location, type, description, requirements)

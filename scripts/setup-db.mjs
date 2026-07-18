@@ -59,13 +59,15 @@ Or:
 
 Then run: npm run db:setup
 
-Alternatively, paste supabase/schema.sql into the Supabase SQL Editor and run it there.
+Alternatively, paste supabase/schema.sql, supabase/policies.sql, and supabase/storage-policies.sql into the Supabase SQL Editor.
 `);
   process.exit(1);
 }
 
 const schemaPath = resolve(root, "supabase/schema.sql");
-const sql = readFileSync(schemaPath, "utf8");
+const policiesPath = resolve(root, "supabase/policies.sql");
+const schemaSql = readFileSync(schemaPath, "utf8");
+const policiesSql = existsSync(policiesPath) ? readFileSync(policiesPath, "utf8") : "";
 
 const client = new pg.Client({
   connectionString,
@@ -74,8 +76,13 @@ const client = new pg.Client({
 
 try {
   await client.connect();
-  await client.query(sql);
+  await client.query(schemaSql);
   console.log("✓ Supabase tables created successfully.");
+
+  if (policiesSql) {
+    await client.query(policiesSql);
+    console.log("✓ RLS policies applied.");
+  }
 
   const { rows } = await client.query(
     "select tablename from pg_tables where schemaname = 'public' order by tablename"

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "HR Process — AI Recruitment Suite",
   description:
-    "AI resume screening and screening interviews powered by Grok. Rank candidates, detect skill gaps, and automate first-round interviews.",
+    "AI resume screening and screening interviews powered by OpenAI. Rank candidates, detect skill gaps, and automate first-round interviews.",
 };
 
 export default function RootLayout({
@@ -74,7 +74,7 @@ export default function RootLayout({
         </header>
         <main className="flex-1">{children}</main>
         <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-          HR Process — powered by Grok (xAI). AI output is advisory; final hiring decisions belong to humans.
+          HR Process — powered by OpenAI. AI output is advisory; final hiring decisions belong to humans.
         </footer>
       </body>
     </html>

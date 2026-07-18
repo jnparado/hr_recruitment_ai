@@ -1,6 +1,6 @@
 # HR Process — AI Recruitment Suite
 
-An HR/recruitment web app powered by [Grok](https://x.ai) (xAI). Built with Next.js and Tailwind CSS.
+An HR/recruitment web app powered by [OpenAI](https://openai.com). Built with Next.js and Tailwind CSS.
 
 ## Features
 
@@ -24,12 +24,12 @@ End-to-end hiring automation in a single run:
 
 ### AI Interview Assistant (`/interview`)
 
-- Grok conducts a first screening interview, one question at a time, covering:
+- OpenAI conducts a first screening interview, one question at a time, covering:
   - Experience
   - Skills
   - Salary expectations
   - Availability
-- **Voice interviews**: Grok speaks each question aloud (Grok TTS) and transcribes the candidate's spoken answers (Grok STT) — with typed answers always available as a fallback
+- **Voice interviews**: OpenAI speaks each question aloud (TTS) and transcribes the candidate's spoken answers (Whisper) — with typed answers always available as a fallback
 - Ends with a **candidate score + recommendation** (advance / maybe / reject), sub-scores for experience, skills, communication, and role fit, plus highlights, concerns, and the full transcript
 
 ## Getting started
@@ -40,11 +40,11 @@ End-to-end hiring automation in a single run:
 npm install
 ```
 
-2. Configure your xAI API key (get one at [console.x.ai](https://console.x.ai)):
+2. Configure your OpenAI API key (get one at [platform.openai.com](https://platform.openai.com/api-keys)):
 
 ```bash
 cp .env.example .env.local
-# then edit .env.local and set XAI_API_KEY
+# then edit .env.local and set OPENAI_API_KEY
 ```
 
 3. Run the dev server:
@@ -57,18 +57,18 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Configuration
 
-| Variable         | Required | Description                                            |
-| ---------------- | -------- | ------------------------------------------------------ |
-| `XAI_API_KEY`    | Yes      | Your xAI API key                                        |
-| `GROK_MODEL`     | No       | Grok model to use (defaults to `grok-4.3`)              |
-| `GROK_TTS_VOICE` | No       | Voice for spoken interview questions (defaults to `eve`) |
+| Variable            | Required | Description                                              |
+| ------------------- | -------- | -------------------------------------------------------- |
+| `OPENAI_API_KEY`    | Yes      | Your OpenAI API key                                      |
+| `OPENAI_MODEL`      | No       | Chat model (defaults to `gpt-4o`)                        |
+| `OPENAI_TTS_VOICE`  | No       | TTS voice (defaults to `nova`)                           |
+| `OPENAI_TTS_MODEL`  | No       | TTS model (defaults to `tts-1`)                          |
+| `OPENAI_STT_MODEL`  | No       | Transcription model (defaults to `whisper-1`)            |
 
 ## Tech stack
 
 - **Next.js 16** (App Router, Route Handlers)
 - **Tailwind CSS 4**
-- **Grok via the xAI API** (OpenAI-compatible endpoint, JSON mode for structured output)
-- **Grok TTS & STT** (`/v1/tts`, `/v1/stt`) for voice interviews, proxied through Next.js route handlers
+- **OpenAI API** — chat completions with JSON mode for structured output
+- **OpenAI TTS & Whisper** for voice interviews, proxied through Next.js route handlers
 - **unpdf** for PDF text extraction, **mammoth** for DOCX
-# hr_recruitment_process
-# hr_recruitment_ai

@@ -1,6 +1,6 @@
 /**
  * Microphone recorder that captures raw PCM via Web Audio and encodes a
- * 16 kHz mono WAV blob — a format Grok STT accepts from every browser.
+ * 16 kHz mono WAV blob — compatible with OpenAI Whisper from every browser.
  */
 export class MicRecorder {
   private stream: MediaStream | null = null;

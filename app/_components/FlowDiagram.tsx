@@ -188,7 +188,7 @@ export const CANDIDATE_FLOW_STEPS = [
   "AI Calls Candidate",
   "Voice Interview",
   "Speech to Text",
-  "Grok AI",
+  "OpenAI",
   "Evaluate Answers",
   "Score",
   "Recruiter Dashboard",

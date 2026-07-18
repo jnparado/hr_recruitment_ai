@@ -7,6 +7,7 @@ export async function triggerN8nApplication(payload: {
   applicantEmail: string;
   resumeUrl: string;
   resumePath: string;
+  certificateFiles?: { fileName: string; storagePath: string; storageUrl: string }[];
 }): Promise<{ triggered: boolean; error?: string }> {
   const url = process.env.N8N_WEBHOOK_URL;
   if (!url) return { triggered: false, error: "N8N_WEBHOOK_URL not configured" };

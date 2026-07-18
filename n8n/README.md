@@ -2,7 +2,7 @@
 
 When a candidate applies on `/careers`, the app:
 
-1. Uploads the PDF to **Supabase Storage** (`Candidate_Record_Created` bucket)
+1. Uploads the PDF to **Supabase Storage** (`upload_resume` bucket)
 2. Saves the application to **Supabase DB** (`applications` table)
 3. POSTs to **`N8N_WEBHOOK_URL`** with the application payload
 

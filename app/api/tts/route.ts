@@ -1,43 +1,40 @@
+import { openaiClient } from "@/lib/openai";
+
 export const maxDuration = 60;
 
-/** Proxies text to xAI's Grok TTS endpoint and streams back MP3 audio. */
+/** Converts text to speech using OpenAI TTS and returns MP3 audio. */
 export async function POST(request: Request) {
-  const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) {
+  try {
+    const body = (await request.json().catch(() => null)) as { text?: string } | null;
+    const text = body?.text?.trim();
+    if (!text) {
+      return Response.json({ error: "Text is required." }, { status: 400 });
+    }
+
+    const speech = await openaiClient().audio.speech.create({
+      model: process.env.OPENAI_TTS_MODEL || "tts-1",
+      voice: (process.env.OPENAI_TTS_VOICE || "nova") as
+        | "alloy"
+        | "ash"
+        | "ballad"
+        | "coral"
+        | "echo"
+        | "fable"
+        | "nova"
+        | "onyx"
+        | "sage"
+        | "shimmer",
+      input: text.slice(0, 4096),
+    });
+
+    const buffer = Buffer.from(await speech.arrayBuffer());
+    return new Response(buffer, {
+      headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
+    });
+  } catch (err) {
     return Response.json(
-      { error: "XAI_API_KEY is not set. Add it to .env.local." },
-      { status: 500 }
-    );
-  }
-
-  const body = (await request.json().catch(() => null)) as { text?: string } | null;
-  const text = body?.text?.trim();
-  if (!text) {
-    return Response.json({ error: "Text is required." }, { status: 400 });
-  }
-
-  const upstream = await fetch("https://api.x.ai/v1/tts", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      text: text.slice(0, 4000),
-      voice_id: process.env.GROK_TTS_VOICE || "eve",
-      language: "en",
-    }),
-  });
-
-  if (!upstream.ok) {
-    const detail = await upstream.text().catch(() => "");
-    return Response.json(
-      { error: `Grok TTS failed (${upstream.status}). ${detail}`.trim() },
+      { error: err instanceof Error ? err.message : "OpenAI TTS failed." },
       { status: 502 }
     );
   }
-
-  return new Response(upstream.body, {
-    headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
-  });
 }
