@@ -23,7 +23,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
 
-  const [email, setEmail] = useState("recruiter@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -117,8 +117,7 @@ function LoginForm() {
       </form>
 
       <p className="mt-6 text-center text-xs text-slate-500">
-        Demo credentials: <span className="font-medium text-slate-700">recruiter@gmail.com</span> /{" "}
-        <span className="font-medium text-slate-700">12345</span>
+        Recruiter credentials are set in <code className="text-slate-700">.env.local</code>.
       </p>
     </div>
   );

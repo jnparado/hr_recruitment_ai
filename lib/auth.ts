@@ -1,11 +1,11 @@
-import { hasRecruiterSession, RECRUITER_EMAIL } from "@/lib/recruiter-session";
+import { getRecruiterEmail, hasRecruiterSession } from "@/lib/recruiter-session";
 
 export type RecruiterUser = { email: string };
 
 /** Returns the logged-in recruiter, or null if anonymous. */
 export async function getRecruiter(): Promise<RecruiterUser | null> {
   if (await hasRecruiterSession()) {
-    return { email: RECRUITER_EMAIL };
+    return { email: getRecruiterEmail() || "recruiter" };
   }
   return null;
 }

@@ -2,16 +2,22 @@ import { cookies } from "next/headers";
 
 export const RECRUITER_COOKIE = "recruiter_session";
 
-/** Static demo credentials — recruiter only */
-export const RECRUITER_EMAIL = "recruiter@gmail.com";
-export const RECRUITER_PASSWORD = "12345";
-
 const SESSION_VALUE = "recruiter-ok";
 
+export function getRecruiterEmail() {
+  return (process.env.RECRUITER_EMAIL || "").trim().toLowerCase();
+}
+
+export function getRecruiterPassword() {
+  return process.env.RECRUITER_PASSWORD || "";
+}
+
 export function verifyRecruiterCredentials(email: string, password: string) {
+  const expectedEmail = getRecruiterEmail();
+  const expectedPassword = getRecruiterPassword();
+  if (!expectedEmail || !expectedPassword) return false;
   return (
-    email.trim().toLowerCase() === RECRUITER_EMAIL &&
-    password === RECRUITER_PASSWORD
+    email.trim().toLowerCase() === expectedEmail && password === expectedPassword
   );
 }
 
