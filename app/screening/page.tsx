@@ -69,7 +69,7 @@ export default function ScreeningPage() {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">AI Resume Screening</h1>
       <p className="mt-2 max-w-2xl text-slate-600">
-        Paste a job description, upload up to 10 resumes, and OpenAI will rank every
+        Paste a job description, upload up to 10 resumes, and Cursor will rank every
         candidate with match scores, matched skills, and skill gaps.
       </p>
 
@@ -155,7 +155,7 @@ export default function ScreeningPage() {
       {loading && (
         <div className="mt-10 flex flex-col items-center gap-3 text-slate-500">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
-          <p className="text-sm">OpenAI is reading resumes and matching them to the role…</p>
+          <p className="text-sm">Cursor is reading resumes and matching them to the role…</p>
         </div>
       )}
 

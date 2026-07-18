@@ -100,7 +100,7 @@ select * from (values
     'Engineering',
     'Remote',
     'Full-time',
-    'Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by OpenAI and n8n automation.',
+    'Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by Cursor and n8n automation.',
     'Experience with LLM APIs, prompt engineering, and workflow automation (n8n/Zapier). Python or TypeScript. ML fundamentals.'
   )
 ) as v(title, department, location, type, description, requirements)

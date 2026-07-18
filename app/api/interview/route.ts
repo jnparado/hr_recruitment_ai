@@ -1,7 +1,7 @@
-import { openaiJson } from "@/lib/openai";
+import { cursorJson } from "@/lib/cursor";
 import type { ChatMessage, InterviewSetup } from "@/lib/types";
 
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 function systemPrompt(setup: InterviewSetup) {
   return `You are a friendly, professional AI interviewer conducting a FIRST SCREENING interview.
@@ -50,14 +50,14 @@ export async function POST(request: Request) {
           .join("\n\n") + "\n\nProvide your next message as the interviewer.";
 
   try {
-    const reply = await openaiJson<{ message: string; done: boolean }>(
+    const reply = await cursorJson<{ message: string; done: boolean }>(
       systemPrompt(body.setup),
       transcript
     );
     return Response.json(reply);
   } catch (err) {
     return Response.json(
-      { error: err instanceof Error ? err.message : "OpenAI request failed." },
+      { error: err instanceof Error ? err.message : "Cursor request failed." },
       { status: 500 }
     );
   }

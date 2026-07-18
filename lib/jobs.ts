@@ -36,7 +36,7 @@ export const SEED_JOBS: DbJob[] = [
     location: "Remote",
     type: "Full-time",
     description:
-      "Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by OpenAI and n8n automation.",
+      "Design and improve our AI resume parsing, job matching, and interview scoring pipelines powered by Cursor and n8n automation.",
     requirements:
       "Experience with LLM APIs, prompt engineering, and workflow automation (n8n/Zapier). Python or TypeScript. ML fundamentals.",
     active: true,

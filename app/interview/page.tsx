@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { MicRecorder } from "@/lib/audio";
+import { BrowserSpeechRecognizer, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
 type Phase = "setup" | "chat" | "evaluating" | "report";
@@ -48,24 +48,16 @@ function InterviewContent() {
   const [voiceMode, setVoiceMode] = useState(true);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
-  const recorderRef = useRef<MicRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recorderRef = useRef<BrowserSpeechRecognizer | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinking, voiceState]);
 
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-    };
-  }, []);
+  useEffect(() => () => stopBrowserSpeech(), []);
 
   function stopSpeaking() {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    stopBrowserSpeech();
     setVoiceState((s) => (s === "speaking" ? "idle" : s));
   }
 
@@ -73,29 +65,10 @@ function InterviewContent() {
     if (!voiceMode) return;
     try {
       setVoiceState("speaking");
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "Text-to-speech failed.");
-      }
-      const url = URL.createObjectURL(await res.blob());
-      await new Promise<void>((resolve) => {
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => resolve();
-        audio.onpause = () => resolve();
-        audio.onerror = () => resolve();
-        void audio.play().catch(() => resolve());
-      });
-      URL.revokeObjectURL(url);
+      await speakInBrowser(text);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Text-to-speech failed.");
     } finally {
-      audioRef.current = null;
       setVoiceState((s) => (s === "speaking" ? "idle" : s));
     }
   }
@@ -107,17 +80,12 @@ function InterviewContent() {
       if (!recorder) return;
       setVoiceState("transcribing");
       try {
-        const wav = await recorder.stop();
-        const form = new FormData();
-        form.append("audio", new File([wav], "answer.wav", { type: "audio/wav" }));
-        const res = await fetch("/api/stt", { method: "POST", body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Transcription failed.");
-        if (!data.text) {
+        const text = await recorder.stop();
+        if (!text) {
           setError("No speech detected — try recording again or type your answer.");
           return;
         }
-        const updated: ChatMessage[] = [...messages, { role: "user", content: data.text }];
+        const updated: ChatMessage[] = [...messages, { role: "user", content: text }];
         setMessages(updated);
         void fetchNext(updated);
       } catch (err) {
@@ -131,7 +99,7 @@ function InterviewContent() {
     stopSpeaking();
     setError(null);
     try {
-      const recorder = new MicRecorder();
+      const recorder = new BrowserSpeechRecognizer();
       await recorder.start();
       recorderRef.current = recorder;
       setVoiceState("recording");
@@ -211,7 +179,7 @@ function InterviewContent() {
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">AI Interview Assistant</h1>
       <p className="mt-2 text-slate-600">
-        OpenAI runs the first screening interview by voice or text — experience,
+        Cursor runs the first screening interview by voice or text — experience,
         skills, salary expectations, and availability — then scores the candidate
         with a hire recommendation.
       </p>
@@ -254,7 +222,7 @@ function InterviewContent() {
               value={setup.jobDescription}
               onChange={(e) => setSetup({ ...setup, jobDescription: e.target.value })}
               rows={6}
-              placeholder="Paste the job description so OpenAI can tailor its questions…"
+              placeholder="Paste the job description so Cursor can tailor its questions…"
               className="mt-2 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
           </div>
@@ -270,7 +238,7 @@ function InterviewContent() {
                 Voice interview
               </span>
               <span className="block text-xs text-slate-500">
-                OpenAI speaks each question aloud and the candidate answers by voice
+                The browser speaks each question aloud and the candidate answers by voice
                 (requires microphone). You can still type answers at any time.
               </span>
             </span>
@@ -339,7 +307,7 @@ function InterviewContent() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-600" />
                 </span>
-                OpenAI is speaking — click to skip
+                AI is speaking — click to skip
               </button>
             )}
             {voiceState === "transcribing" && (
@@ -350,7 +318,7 @@ function InterviewContent() {
             )}
             {phase === "evaluating" && (
               <div className="self-center py-4 text-sm text-slate-500">
-                Interview complete — OpenAI is scoring the candidate…
+                Interview complete — Cursor is scoring the candidate…
               </div>
             )}
             <div ref={bottomRef} />

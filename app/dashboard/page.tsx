@@ -47,7 +47,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Recruiter Dashboard</h1>
           <p className="mt-2 text-slate-600">
-            Candidates who applied, completed AI voice interviews, and were scored by OpenAI.
+            Candidates who applied, completed AI voice interviews, and were scored by Cursor.
           </p>
         </div>
         <button

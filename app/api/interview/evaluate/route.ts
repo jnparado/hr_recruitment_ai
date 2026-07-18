@@ -1,7 +1,7 @@
-import { openaiJson } from "@/lib/openai";
+import { cursorJson } from "@/lib/cursor";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 const SYSTEM_PROMPT = `You are a senior recruiter evaluating the transcript of a first screening interview.
 Based ONLY on the transcript, respond with ONLY a JSON object of this exact shape:
@@ -43,14 +43,14 @@ export async function POST(request: Request) {
     .join("\n\n");
 
   try {
-    const evaluation = await openaiJson<InterviewEvaluation>(
+    const evaluation = await cursorJson<InterviewEvaluation>(
       SYSTEM_PROMPT,
       `Role: ${body.setup.jobTitle}\nCandidate: ${body.setup.candidateName || "Unknown"}\nJob description:\n${body.setup.jobDescription || "(not provided)"}\n\nTRANSCRIPT:\n${transcript}`
     );
     return Response.json(evaluation);
   } catch (err) {
     return Response.json(
-      { error: err instanceof Error ? err.message : "OpenAI request failed." },
+      { error: err instanceof Error ? err.message : "Cursor request failed." },
       { status: 500 }
     );
   }

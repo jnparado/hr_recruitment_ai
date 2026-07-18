@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { MicRecorder } from "@/lib/audio";
+import { BrowserSpeechRecognizer, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
 import { CANDIDATE_FLOW_STEPS, FlowDiagram } from "@/app/_components/FlowDiagram";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
 
@@ -24,8 +24,7 @@ export default function CallPage() {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const recorderRef = useRef<MicRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recorderRef = useRef<BrowserSpeechRecognizer | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,34 +49,18 @@ export default function CallPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, voiceState, thinking]);
 
-  useEffect(() => () => audioRef.current?.pause(), []);
+  useEffect(() => () => stopBrowserSpeech(), []);
 
   function stopSpeaking() {
-    audioRef.current?.pause();
-    audioRef.current = null;
+    stopBrowserSpeech();
     setVoiceState((s) => (s === "speaking" ? "idle" : s));
   }
 
   async function speak(text: string) {
     setVoiceState("speaking");
     try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error("Text-to-speech failed.");
-      const url = URL.createObjectURL(await res.blob());
-      await new Promise<void>((resolve) => {
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => resolve();
-        audio.onerror = () => resolve();
-        void audio.play().catch(() => resolve());
-      });
-      URL.revokeObjectURL(url);
+      await speakInBrowser(text);
     } finally {
-      audioRef.current = null;
       setVoiceState((s) => (s === "speaking" ? "idle" : s));
     }
   }
@@ -89,14 +72,9 @@ export default function CallPage() {
       if (!recorder) return;
       setVoiceState("transcribing");
       try {
-        const wav = await recorder.stop();
-        const form = new FormData();
-        form.append("audio", new File([wav], "answer.wav", { type: "audio/wav" }));
-        const res = await fetch("/api/stt", { method: "POST", body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Transcription failed.");
-        if (!data.text) throw new Error("No speech detected. Please try again.");
-        const updated: ChatMessage[] = [...messages, { role: "user", content: data.text }];
+        const text = await recorder.stop();
+        if (!text) throw new Error("No speech detected. Please try again.");
+        const updated: ChatMessage[] = [...messages, { role: "user", content: text }];
         setMessages(updated);
         void fetchNext(updated);
       } catch (err) {
@@ -110,7 +88,7 @@ export default function CallPage() {
     stopSpeaking();
     setError(null);
     try {
-      const recorder = new MicRecorder();
+      const recorder = new BrowserSpeechRecognizer();
       await recorder.start();
       recorderRef.current = recorder;
       setVoiceState("recording");
@@ -191,7 +169,7 @@ export default function CallPage() {
               : phase === "interview"
                 ? "Voice Interview"
                 : phase === "evaluating"
-                  ? "OpenAI"
+                  ? "Cursor AI"
                   : phase === "complete"
                     ? "Recruiter Dashboard"
                     : undefined
@@ -246,7 +224,7 @@ export default function CallPage() {
             <p className="text-sm font-semibold text-slate-900">Voice interview — {jobTitle}</p>
             <p className="text-xs text-slate-500">
               {phase === "evaluating"
-                ? "Speech → Text → OpenAI → Scoring…"
+                ? "Speech → Text → Cursor AI → Scoring…"
                 : "Speak your answers using the mic button"}
             </p>
           </div>

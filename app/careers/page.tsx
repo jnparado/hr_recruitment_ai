@@ -193,7 +193,7 @@ export default function CareersPage() {
             </button>
           </form>
           <p className="mt-3 text-center text-xs text-slate-400">
-            Apply → AI calls you → Voice interview → Speech-to-text → OpenAI evaluates → Score →
+            Apply → AI calls you → Voice interview → Speech-to-text → Cursor evaluates → Score →
             Recruiter dashboard
           </p>
         </div>

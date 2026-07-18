@@ -1,6 +1,6 @@
 # HR Process — AI Recruitment Suite
 
-An HR/recruitment web app powered by [OpenAI](https://openai.com). Built with Next.js and Tailwind CSS.
+An HR/recruitment web app powered by [Cursor](https://cursor.com). Built with Next.js and Tailwind CSS.
 
 ## Features
 
@@ -24,13 +24,13 @@ End-to-end hiring automation in a single run:
 
 ### AI Interview Assistant (`/interview`)
 
-- OpenAI conducts a first screening interview, one question at a time, covering:
+- Cursor conducts a first screening interview, one question at a time, covering:
   - Experience
   - Skills
   - Salary expectations
   - Availability
-- **Voice interviews**: OpenAI speaks each question aloud (TTS) and transcribes the candidate's spoken answers (Whisper) — with typed answers always available as a fallback
-- Ends with a **candidate score + recommendation** (advance / maybe / reject), sub-scores for experience, skills, communication, and role fit, plus highlights, concerns, and the full transcript
+- **Voice interviews**: browser speech synthesis + speech recognition (Chrome/Edge recommended)
+- Ends with a **candidate score + recommendation** (advance / maybe / reject)
 
 ## Getting started
 
@@ -40,11 +40,11 @@ End-to-end hiring automation in a single run:
 npm install
 ```
 
-2. Configure your OpenAI API key (get one at [platform.openai.com](https://platform.openai.com/api-keys)):
+2. Configure your Cursor API key ([cursor.com/dashboard/integrations](https://cursor.com/dashboard/integrations)):
 
 ```bash
 cp .env.example .env.local
-# then edit .env.local and set OPENAI_API_KEY
+# then edit .env.local and set CURSOR_API_KEY
 ```
 
 3. Run the dev server:
@@ -57,18 +57,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Configuration
 
-| Variable            | Required | Description                                              |
-| ------------------- | -------- | -------------------------------------------------------- |
-| `OPENAI_API_KEY`    | Yes      | Your OpenAI API key                                      |
-| `OPENAI_MODEL`      | No       | Chat model (defaults to `gpt-4o`)                        |
-| `OPENAI_TTS_VOICE`  | No       | TTS voice (defaults to `nova`)                           |
-| `OPENAI_TTS_MODEL`  | No       | TTS model (defaults to `tts-1`)                          |
-| `OPENAI_STT_MODEL`  | No       | Transcription model (defaults to `whisper-1`)            |
+| Variable          | Required | Description                              |
+| ----------------- | -------- | ---------------------------------------- |
+| `CURSOR_API_KEY`  | Yes      | Your Cursor API key                      |
+| `CURSOR_MODEL`    | No       | Cursor model (defaults to `composer-2.5`) |
 
 ## Tech stack
 
 - **Next.js 16** (App Router, Route Handlers)
 - **Tailwind CSS 4**
-- **OpenAI API** — chat completions with JSON mode for structured output
-- **OpenAI TTS & Whisper** for voice interviews, proxied through Next.js route handlers
+- **Cursor Cloud Agents API** for AI screening, parsing, and interviews
+- **Browser Web Speech API** for voice interviews
 - **unpdf** for PDF text extraction, **mammoth** for DOCX
