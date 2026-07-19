@@ -32,6 +32,12 @@ export function SiteHeader({ isRecruiter }: SiteHeaderProps) {
   useEffect(() => setMounted(true), []);
 
   const publicMode = mounted && isPublicApplicantPath(pathname);
+  const inCallMeeting = mounted && pathname.startsWith("/call/");
+
+  // Full-screen Zoom-style room — hide marketing chrome
+  if (inCallMeeting) {
+    return null;
+  }
 
   if (publicMode) {
     return (

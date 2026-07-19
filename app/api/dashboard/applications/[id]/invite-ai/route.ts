@@ -62,11 +62,17 @@ export async function POST(
       token: invite.token,
       interviewUrl,
       deadline: invite.deadline,
-      email,
+      email: {
+        to: email.to,
+        subject: email.subject,
+      },
       emailSent: delivery.sent,
+      emailProvider: delivery.provider ?? null,
       emailNote: delivery.sent
         ? `Invitation email sent to ${email.to}`
-        : `Invitation created. Secure link ready — ${delivery.error || "email queued locally"}.`,
+        : `Invite created. Share the secure link below${
+            delivery.error ? ` (${delivery.error})` : ""
+          }.`,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create AI interview invite.";

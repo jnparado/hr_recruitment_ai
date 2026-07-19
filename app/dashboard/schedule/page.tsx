@@ -1,89 +1,74 @@
 import Link from "next/link";
-import { listScheduledInterviews } from "@/lib/db";
+import { InterviewCalendar } from "@/app/dashboard/_components/InterviewCalendar";
+import { listInterviewCalendarEvents } from "@/lib/calendar-events";
 
-export default async function InterviewsPage() {
-  let rows: Awaited<ReturnType<typeof listScheduledInterviews>> = [];
+export default async function SchedulePage() {
+  let events: Awaited<ReturnType<typeof listInterviewCalendarEvents>> = [];
   try {
-    rows = await listScheduledInterviews();
+    events = await listInterviewCalendarEvents();
   } catch {
-    rows = [];
+    events = [];
   }
 
+  const aiCount = events.filter((e) => e.kind === "ai").length;
+  const humanCount = events.filter((e) => e.kind === "human").length;
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-        Interview Management
-      </h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Schedule human interviews, calendar/Teams/Zoom payloads, and automated reminders.
-      </p>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        {[
-          {
-            title: "Google Calendar",
-            body: "Event payloads generated on schedule — connect via n8n.",
-          },
-          {
-            title: "Microsoft Teams",
-            body: "Meeting link field ready for Teams webhook integration.",
-          },
-          {
-            title: "Zoom",
-            body: "Meeting link field ready for Zoom webhook integration.",
-          },
-        ].map((c) => (
-          <div
-            key={c.title}
-            className="rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm"
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Interview calendar
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Outlook-style view of AI Interview Room invites and final human interviews.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/applicants"
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
           >
-            <p className="font-semibold text-slate-900">{c.title}</p>
-            <p className="mt-1 text-slate-600">{c.body}</p>
-          </div>
-        ))}
+            Schedule human interview
+          </Link>
+          <Link
+            href="/dashboard/applicants"
+            className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-100"
+          >
+            Invite to AI Interview
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <Link
-          href="/dashboard/applicants"
-          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
-        >
-          Schedule from candidates
-        </Link>
-        <Link
-          href="/dashboard/applicants"
-          className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-800"
-        >
-          Invite to AI Interview Room
-        </Link>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            All on calendar
+          </p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{events.length}</p>
+        </div>
+        <div className="rounded-xl border border-sky-100 bg-sky-50/80 p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-700">
+            AI interviews
+          </p>
+          <p className="mt-1 text-2xl font-bold text-sky-950">{aiCount}</p>
+        </div>
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/80 p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+            Human / final
+          </p>
+          <p className="mt-1 text-2xl font-bold text-emerald-950">{humanCount}</p>
+        </div>
       </div>
 
-      <section className="mt-8">
-        <h2 className="font-semibold text-slate-900">Scheduled interviews</h2>
-        {rows.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">No interviews scheduled.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm">
-            {rows.map((row) => (
-              <li key={String(row.id)} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm">
-                <div>
-                  <p className="font-medium text-slate-900">{String(row.candidate_name)}</p>
-                  <p className="text-xs text-slate-500">{String(row.job_title)}</p>
-                </div>
-                <div className="text-right text-xs text-slate-600">
-                  <p>
-                    {String(row.scheduled_date)} · {String(row.scheduled_time)}
-                  </p>
-                  <p className="capitalize">{String(row.format)} · {String(row.duration_minutes)} min</p>
-                  <p>
-                    Reminder: {row.reminder_sent ? "sent" : "pending"}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <InterviewCalendar events={events} />
+
+      <p className="text-xs text-slate-500">
+        <span className="font-semibold text-sky-700">AI</span> events use invite deadlines and
+        completion times.{" "}
+        <span className="font-semibold text-emerald-700">Human</span> events come from scheduled
+        final interviews on Candidates.
+      </p>
     </div>
   );
 }

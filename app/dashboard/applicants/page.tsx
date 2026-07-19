@@ -96,6 +96,14 @@ export default function ApplicantsPage() {
   const [query, setQuery] = useState("");
   const [jobFilter, setJobFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [inviteResult, setInviteResult] = useState<{
+    interviewUrl: string;
+    emailTo: string;
+    emailSent: boolean;
+    emailNote: string;
+    candidateName: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
   const autoScoreStarted = useRef(false);
 
   const load = useCallback(async () => {
@@ -240,6 +248,8 @@ export default function ApplicantsPage() {
   async function inviteAiInterview(applicationId: string) {
     setBusyId(applicationId);
     setError(null);
+    setCopied(false);
+    const candidate = candidates.find((c) => c.applicationId === applicationId);
     try {
       const r = await fetch(`/api/dashboard/applications/${applicationId}/invite-ai`, {
         method: "POST",
@@ -257,25 +267,29 @@ export default function ApplicantsPage() {
       );
       if (d.interviewUrl) {
         await navigator.clipboard.writeText(d.interviewUrl).catch(() => null);
-        alert(
-          [
-            d.emailNote || "AI Interview invitation created.",
-            "",
-            "Secure link:",
-            d.interviewUrl,
-            "",
-            d.emailSent
-              ? `Email sent to ${d.email?.to || "candidate"}.`
-              : `Email ready for ${d.email?.to || "candidate"} (configure N8N_WEBHOOK_URL to deliver).`,
-            "",
-            "Link copied when allowed.",
-          ].join("\n")
-        );
+        setCopied(true);
+        setInviteResult({
+          interviewUrl: d.interviewUrl,
+          emailTo: d.email?.to || candidate?.email || "candidate",
+          emailSent: !!d.emailSent,
+          emailNote: d.emailNote || "Invitation created.",
+          candidateName: candidate?.candidateName || "Candidate",
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invite failed.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function copyInviteLink() {
+    if (!inviteResult?.interviewUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteResult.interviewUrl);
+      setCopied(true);
+    } catch {
+      setCopied(false);
     }
   }
 
@@ -618,6 +632,89 @@ export default function ApplicantsPage() {
           );
         })}
       </div>
+
+      {inviteResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="invite-dialog-title"
+          onClick={() => setInviteResult(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+              AI Interview invite
+            </p>
+            <h2 id="invite-dialog-title" className="mt-1 text-xl font-bold text-slate-900">
+              {inviteResult.emailSent ? "Email sent" : "Invite ready"}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Secure meeting link for{" "}
+              <span className="font-medium text-slate-900">{inviteResult.candidateName}</span>
+              {inviteResult.emailSent ? (
+                <>
+                  {" "}
+                  was emailed to{" "}
+                  <span className="font-medium text-slate-900">{inviteResult.emailTo}</span>.
+                </>
+              ) : (
+                <>
+                  . Email was not sent automatically — copy the link and share it with{" "}
+                  <span className="font-medium text-slate-900">{inviteResult.emailTo}</span>.
+                </>
+              )}
+            </p>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                Secure link
+              </p>
+              <p className="mt-1 break-all font-mono text-xs text-slate-800">
+                {inviteResult.interviewUrl}
+              </p>
+            </div>
+
+            {!inviteResult.emailSent && (
+              <p className="mt-3 text-xs text-amber-800">
+                To auto-send invites on Vercel, add{" "}
+                <code className="rounded bg-amber-100 px-1">RESEND_API_KEY</code> (or{" "}
+                <code className="rounded bg-amber-100 px-1">N8N_WEBHOOK_URL</code>) in project
+                env vars.
+              </p>
+            )}
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void copyInviteLink()}
+                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
+              >
+                {copied ? "Copied" : "Copy link"}
+              </button>
+              <a
+                href={`mailto:${encodeURIComponent(inviteResult.emailTo)}?subject=${encodeURIComponent(
+                  "Your AI Interview invitation"
+                )}&body=${encodeURIComponent(
+                  `Hi,\n\nPlease complete your AI interview using this secure link:\n\n${inviteResult.interviewUrl}\n\nThank you.`
+                )}`}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Open email app
+              </a>
+              <button
+                type="button"
+                onClick={() => setInviteResult(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

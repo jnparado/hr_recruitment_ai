@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { listDashboardCandidates, listAllJobs, listScheduledInterviews } from "@/lib/db";
+import { InterviewCalendar } from "@/app/dashboard/_components/InterviewCalendar";
+import { listInterviewCalendarEvents } from "@/lib/calendar-events";
+import { listDashboardCandidates, listAllJobs } from "@/lib/db";
 
 function scoreTone(score: number | null) {
   if (score == null) return "bg-slate-100 text-slate-500";
@@ -24,13 +26,13 @@ function formatRelative(iso: string) {
 export default async function DashboardHomePage() {
   let candidates: Awaited<ReturnType<typeof listDashboardCandidates>> = [];
   let jobs: Awaited<ReturnType<typeof listAllJobs>> = [];
-  let interviews: Awaited<ReturnType<typeof listScheduledInterviews>> = [];
+  let calendarEvents: Awaited<ReturnType<typeof listInterviewCalendarEvents>> = [];
 
   try {
-    [candidates, jobs, interviews] = await Promise.all([
+    [candidates, jobs, calendarEvents] = await Promise.all([
       listDashboardCandidates(),
       listAllJobs(),
-      listScheduledInterviews(),
+      listInterviewCalendarEvents(),
     ]);
   } catch {
     // Empty dashboard if DB not ready
@@ -69,7 +71,7 @@ export default async function DashboardHomePage() {
     .sort((a, b) => +new Date(b.appliedAt) - +new Date(a.appliedAt))
     .slice(0, 5);
 
-  const upcoming = interviews.slice(0, 5);
+  const upcoming = calendarEvents.slice(0, 5);
 
   const hour = new Date().getHours();
   const greeting =
@@ -87,7 +89,7 @@ export default async function DashboardHomePage() {
       tone: "indigo" as const,
     },
     upcoming.length > 0 && {
-      label: `${upcoming.length} human interview${upcoming.length === 1 ? "" : "s"} on the calendar`,
+      label: `${upcoming.length} interview${upcoming.length === 1 ? "" : "s"} on the calendar`,
       href: "/dashboard/schedule",
       tone: "emerald" as const,
     },
@@ -367,53 +369,17 @@ export default async function DashboardHomePage() {
           )}
         </section>
 
-        {/* Calendar */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
+        <section className="min-w-0">
+          <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold text-slate-900">Interview calendar</h2>
             <Link
               href="/dashboard/schedule"
               className="text-xs font-semibold text-emerald-700 hover:underline"
             >
-              View all
+              Full calendar
             </Link>
           </div>
-          {upcoming.length === 0 ? (
-            <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center">
-              <p className="text-sm font-medium text-slate-700">No interviews scheduled</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Shortlist a candidate, then schedule a human interview from Candidates.
-              </p>
-              <Link
-                href="/dashboard/applicants"
-                className="mt-4 inline-block text-xs font-semibold text-emerald-700 hover:underline"
-              >
-                Go to candidates →
-              </Link>
-            </div>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {upcoming.map((row) => (
-                <li
-                  key={String(row.id)}
-                  className="flex justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 text-sm"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {String(row.candidate_name)}
-                    </p>
-                    <p className="text-xs text-slate-500">{String(row.job_title)}</p>
-                  </div>
-                  <p className="shrink-0 text-xs font-medium text-emerald-800">
-                    {String(row.scheduled_date)}
-                    <span className="block text-slate-500">
-                      {String(row.scheduled_time)}
-                    </span>
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <InterviewCalendar events={calendarEvents} compact />
         </section>
       </div>
     </div>

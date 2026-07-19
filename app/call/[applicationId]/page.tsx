@@ -11,8 +11,9 @@ import {
 } from "@/lib/browser-voice";
 import { INTERVIEW_QUESTION_LIMIT } from "@/lib/interview-config";
 import {
-  AiVoicePanel,
+  AiMeetingTile,
   CandidateCameraPreview,
+  ZoomControl,
   formatRecordingTime,
 } from "@/app/_components/InterviewRoomVoice";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
@@ -22,8 +23,7 @@ type VoiceState = "idle" | "speaking" | "recording" | "transcribing";
 type SaveStage = "transcript" | "evaluate" | "score";
 
 /**
- * AI Interview Room — voice interface (no avatar).
- * Layout: AI voice panel | current question | candidate camera + controls.
+ * AI Interview Room — Zoom-style meeting UI while in session.
  */
 export default function CallPage() {
   const params = useParams();
@@ -43,7 +43,10 @@ export default function CallPage() {
   const [saveStage, setSaveStage] = useState<SaveStage>("transcript");
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
+  const [videoOn, setVideoOn] = useState(true);
   const [recordSeconds, setRecordSeconds] = useState(0);
+  const [meetingSeconds, setMeetingSeconds] = useState(0);
+  const [panelOpen, setPanelOpen] = useState(true);
   const [supportOpen, setSupportOpen] = useState(false);
 
   const recorderRef = useRef<BrowserSpeechRecognizer | null>(null);
@@ -94,6 +97,13 @@ export default function CallPage() {
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
     };
   }, [voiceState]);
+
+  useEffect(() => {
+    if (phase !== "interview" && phase !== "evaluating") return;
+    setMeetingSeconds(0);
+    const id = setInterval(() => setMeetingSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
 
   useEffect(
     () => () => {
@@ -338,6 +348,24 @@ export default function CallPage() {
     void fetchNext([]);
   }
 
+  function leaveMeeting() {
+    if (
+      phase === "interview" &&
+      messages.some((m) => m.role === "user") &&
+      !window.confirm("Leave and submit your interview so far?")
+    ) {
+      return;
+    }
+    if (phase === "interview" && messages.some((m) => m.role === "user")) {
+      void finalizeInterview(messages);
+      return;
+    }
+    stopSpeaking();
+    sessionRecorderRef.current?.stop();
+    sessionStreamRef.current?.getTracks().forEach((t) => t.stop());
+    window.location.href = "/careers";
+  }
+
   const panelState =
     voiceState === "speaking"
       ? "speaking"
@@ -347,9 +375,11 @@ export default function CallPage() {
           ? "thinking"
           : "idle";
 
+  const inMeeting = phase === "interview" || phase === "evaluating";
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      {(error || invalidLink) && (
+    <div className={inMeeting ? "" : "mx-auto max-w-5xl px-4 py-8 sm:px-6"}>
+      {(error || invalidLink) && !inMeeting && (
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
           {error || "Invalid interview link. Please apply again from the careers page."}
         </div>
@@ -357,151 +387,282 @@ export default function CallPage() {
 
       {phase === "loading" && (
         <div className="flex flex-col items-center py-20 text-slate-500">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
-          <p className="mt-3 text-sm">Opening Interview Room…</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />
+          <p className="mt-3 text-sm">Joining meeting…</p>
         </div>
       )}
 
       {phase === "incoming" && (
-        <div className="mx-auto flex max-w-lg flex-col items-center rounded-2xl border border-slate-200 bg-white p-10 shadow-sm">
-          <p className="text-sm font-medium text-indigo-600">AI Interview Room</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">
-            {candidateName || "Candidate"}
-          </h1>
-          <p className="text-slate-500">{jobTitle || "Screening interview"}</p>
-          <p className="mt-4 max-w-sm text-center text-sm text-slate-600">
-            Voice-based AI interview — no avatar. Allow camera and microphone when prompted.
-            Answers are evaluated and a report is sent to the recruiter.
-          </p>
-          <button
-            type="button"
-            onClick={acceptCall}
-            disabled={invalidLink}
-            className="mt-8 rounded-xl bg-indigo-600 px-8 py-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:bg-slate-300"
-          >
-            Enter Interview Room
-          </button>
+        <div className="mx-auto flex max-w-md flex-col items-center overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+          <div className="w-full bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 px-8 py-10 text-center text-white">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/90">
+              AI Interview Meeting
+            </p>
+            <div className="mx-auto mt-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-600 text-2xl font-bold shadow-lg ring-4 ring-emerald-400/30">
+              AI
+            </div>
+            <h1 className="mt-5 text-2xl font-bold">
+              {jobTitle || "Screening interview"}
+            </h1>
+            <p className="mt-1 text-sm text-slate-300">
+              Hosted for {candidateName || "you"}
+            </p>
+            <p className="mt-4 text-xs text-slate-400">
+              Camera and microphone required · ~{INTERVIEW_QUESTION_LIMIT} questions
+            </p>
+          </div>
+          <div className="w-full space-y-3 px-6 py-6">
+            <button
+              type="button"
+              onClick={acceptCall}
+              disabled={invalidLink}
+              className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:bg-slate-300"
+            >
+              Join meeting
+            </button>
+            <Link
+              href="/careers"
+              className="block w-full rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </Link>
+          </div>
         </div>
       )}
 
-      {(phase === "interview" || phase === "evaluating") && (
-        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 text-white shadow-xl">
-          <header className="border-b border-white/10 px-5 py-3">
-            <h1 className="text-sm font-semibold tracking-wide sm:text-base">
-              AI Interview – {jobTitle || "Open Role"}
-            </h1>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Voice interface · report goes to Recruiter Admin
-            </p>
+      {inMeeting && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#1f1f1f] text-white">
+          {/* Top bar */}
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#1f1f1f]/95 px-3 py-2.5 sm:px-5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 rounded bg-rose-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                  Rec
+                </span>
+                <h1 className="truncate text-sm font-semibold sm:text-base">
+                  {jobTitle || "AI Interview"}
+                </h1>
+              </div>
+              <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                {formatRecordingTime(meetingSeconds)} · Question{" "}
+                {questionsAsked === 0 ? "—" : questionIndex}/{INTERVIEW_QUESTION_LIMIT} ·{" "}
+                {candidateName || "Candidate"}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPanelOpen((v) => !v)}
+                className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium hover:bg-white/15"
+              >
+                {panelOpen ? "Hide Q" : "Show Q"}
+              </button>
+              <span className="hidden rounded-lg bg-white/10 px-2.5 py-1.5 text-xs text-slate-300 sm:inline">
+                2 participants
+              </span>
+            </div>
           </header>
 
-          <div className="grid gap-4 p-4 md:grid-cols-2 md:p-5">
-            <AiVoicePanel
-              state={
-                phase === "evaluating"
-                  ? "thinking"
-                  : (panelState as "idle" | "speaking" | "listening" | "thinking")
-              }
-              label={
-                phase === "evaluating"
-                  ? saveStage === "transcript"
-                    ? "Saving transcript…"
-                    : saveStage === "evaluate"
-                      ? "Evaluating answers…"
-                      : "Saving score…"
-                  : undefined
-              }
-            />
-
-            <div className="flex min-h-[200px] flex-col rounded-xl border border-white/15 bg-slate-900/60 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
-                Question {questionsAsked === 0 ? "—" : questionIndex} of{" "}
-                {INTERVIEW_QUESTION_LIMIT}
-              </p>
-              <p className="mt-4 flex-1 text-lg font-medium leading-relaxed text-white">
-                {phase === "evaluating"
-                  ? "Wrapping up your interview…"
-                  : currentQuestion ||
-                    (thinking ? "Preparing your first question…" : "Waiting for AI…")}
-              </p>
-              {voiceState === "transcribing" && (
-                <p className="mt-3 text-xs text-slate-400">Transcribing your answer…</p>
-              )}
+          {error && (
+            <div className="shrink-0 border-b border-rose-500/30 bg-rose-950/80 px-4 py-2 text-center text-xs text-rose-100">
+              {error}
             </div>
-          </div>
+          )}
 
-          <div className="border-t border-white/10 bg-slate-900/80 px-4 py-5 sm:px-5">
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <CandidateCameraPreview
-                enabled={phase === "interview"}
-                muted={muted}
-              />
-              <div className="text-center sm:text-right">
-                <p className="text-sm font-medium text-rose-300">
-                  {voiceState === "recording"
-                    ? `Recording: ${formatRecordingTime(recordSeconds)}`
-                    : phase === "evaluating"
-                      ? "Processing…"
-                      : "Ready to record"}
-                </p>
+          {/* Stage */}
+          <div className="relative min-h-0 flex-1">
+            <div
+              className={`flex h-full gap-3 p-3 sm:p-4 ${
+                panelOpen ? "lg:pr-[min(340px,32%)]" : ""
+              }`}
+            >
+              <div className="relative min-h-0 flex-1">
+                <AiMeetingTile
+                  state={
+                    phase === "evaluating"
+                      ? "thinking"
+                      : (panelState as "idle" | "speaking" | "listening" | "thinking")
+                  }
+                  label={
+                    phase === "evaluating"
+                      ? saveStage === "transcript"
+                        ? "Saving transcript…"
+                        : saveStage === "evaluate"
+                          ? "Evaluating answers…"
+                          : "Saving score…"
+                      : undefined
+                  }
+                />
+
+                {/* Caption strip (current question) — mobile / when panel closed */}
+                {!panelOpen && currentQuestion && phase === "interview" && (
+                  <div className="absolute bottom-4 left-1/2 z-10 w-[min(92%,36rem)] -translate-x-1/2 rounded-xl bg-black/70 px-4 py-3 text-center text-sm leading-relaxed text-white backdrop-blur-md">
+                    {currentQuestion}
+                  </div>
+                )}
+
+                {/* Self-view PiP */}
+                <div className="absolute bottom-3 right-3 z-20 sm:bottom-4 sm:right-4">
+                  <CandidateCameraPreview
+                    enabled={phase === "interview" || phase === "evaluating"}
+                    muted={muted}
+                    videoOn={videoOn}
+                    pip
+                  />
+                </div>
               </div>
             </div>
 
-            {phase === "interview" && (
-              <div className="mt-5 flex flex-wrap justify-center gap-2 sm:gap-3">
-                <ControlButton
+            {/* Question / chat side panel */}
+            {panelOpen && (
+              <aside className="absolute inset-y-0 right-0 z-30 flex w-full max-w-full flex-col border-l border-white/10 bg-[#252525] sm:max-w-sm lg:max-w-[320px]">
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                  <p className="text-sm font-semibold">Current question</p>
+                  <button
+                    type="button"
+                    onClick={() => setPanelOpen(false)}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 py-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                    Question {questionsAsked === 0 ? "—" : questionIndex} of{" "}
+                    {INTERVIEW_QUESTION_LIMIT}
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-100">
+                    {phase === "evaluating"
+                      ? "Wrapping up your interview…"
+                      : currentQuestion ||
+                        (thinking
+                          ? "Preparing your first question…"
+                          : "Waiting for the interviewer…")}
+                  </p>
+                  {voiceState === "recording" && (
+                    <p className="mt-4 rounded-lg bg-rose-600/20 px-3 py-2 text-xs font-medium text-rose-200">
+                      Recording answer · {formatRecordingTime(recordSeconds)}
+                    </p>
+                  )}
+                  {voiceState === "transcribing" && (
+                    <p className="mt-4 text-xs text-slate-400">Transcribing your answer…</p>
+                  )}
+
+                  {messages.filter((m) => m.role === "user").length > 0 && (
+                    <div className="mt-6 border-t border-white/10 pt-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        Your recent answers
+                      </p>
+                      <ul className="mt-2 space-y-2">
+                        {messages
+                          .filter((m) => m.role === "user")
+                          .slice(-3)
+                          .map((m, i) => (
+                            <li
+                              key={i}
+                              className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-300"
+                            >
+                              {m.content.slice(0, 160)}
+                              {m.content.length > 160 ? "…" : ""}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </aside>
+            )}
+          </div>
+
+          {/* Bottom Zoom-style controls */}
+          <footer className="shrink-0 border-t border-white/10 bg-[#1a1a1a] px-2 py-3 sm:px-4 sm:py-4">
+            {phase === "interview" ? (
+              <div className="mx-auto flex max-w-3xl flex-wrap items-end justify-center gap-3 sm:gap-5">
+                <ZoomControl
+                  label={muted ? "Unmute" : "Mute"}
+                  active={muted}
                   onClick={() => {
                     const next = !muted;
                     setMuted(next);
                     if (next) stopSpeaking();
                   }}
-                  active={muted}
                 >
-                  {muted ? "Unmute" : "Mute"}
-                </ControlButton>
-                <ControlButton
-                  onClick={() => void repeatQuestion()}
+                  <IconMute off={muted} />
+                </ZoomControl>
+                <ZoomControl
+                  label={videoOn ? "Stop video" : "Start video"}
+                  active={!videoOn}
+                  onClick={() => setVideoOn((v) => !v)}
+                >
+                  <IconVideo off={!videoOn} />
+                </ZoomControl>
+                <ZoomControl
+                  label="Repeat"
                   disabled={!currentQuestion || voiceState === "recording" || thinking}
+                  onClick={() => void repeatQuestion()}
                 >
-                  Repeat Question
-                </ControlButton>
-                <ControlButton
-                  onClick={() => void toggleRecording()}
-                  disabled={thinking || voiceState === "transcribing" || voiceState === "speaking"}
+                  <IconRepeat />
+                </ZoomControl>
+                <ZoomControl
+                  label={
+                    voiceState === "recording"
+                      ? "Submit"
+                      : voiceState === "transcribing"
+                        ? "…"
+                        : "Answer"
+                  }
                   primary={voiceState !== "recording"}
                   danger={voiceState === "recording"}
+                  disabled={
+                    thinking || voiceState === "transcribing" || voiceState === "speaking"
+                  }
+                  onClick={() => void toggleRecording()}
                 >
-                  {voiceState === "recording" ? "Submit Answer" : "Start Answer"}
-                </ControlButton>
-                <ControlButton onClick={() => setSupportOpen((v) => !v)}>
-                  Support
-                </ControlButton>
+                  {voiceState === "recording" ? <IconStop /> : <IconMic />}
+                </ZoomControl>
+                <ZoomControl
+                  label="Support"
+                  active={supportOpen}
+                  onClick={() => setSupportOpen((v) => !v)}
+                >
+                  <IconHelp />
+                </ZoomControl>
+                <ZoomControl label="Leave" danger onClick={leaveMeeting}>
+                  <IconLeave />
+                </ZoomControl>
               </div>
+            ) : (
+              <p className="py-2 text-center text-sm text-slate-300">
+                Meeting ending — saving your interview report…
+              </p>
             )}
 
-            {supportOpen && (
-              <div className="mx-auto mt-4 max-w-md rounded-lg border border-white/10 bg-slate-950/80 p-3 text-center text-xs text-slate-300">
-                Need help? Email{" "}
-                <a
-                  href="mailto:careers@horizontalent.example"
-                  className="text-indigo-300 underline"
-                >
-                  careers@horizontalent.example
-                </a>
-                . Technical issues: refresh the page and re-check camera/mic permissions.
+            {supportOpen && phase === "interview" && (
+              <div className="mx-auto mt-3 max-w-md rounded-lg border border-white/10 bg-[#2a2a2a] p-3 text-center text-xs text-slate-300">
+                Need help? Refresh and re-check camera/mic permissions. Contact recruiting if
+                the meeting won&apos;t connect.
               </div>
             )}
-          </div>
+          </footer>
         </div>
       )}
 
       {phase === "complete" && (
         <div className="mx-auto max-w-lg rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-2xl text-white">
-            ✓
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M5 13l4 4L19 7"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
           <h2 className="mt-4 text-xl font-bold text-slate-900">
-            {alreadyDone && !evaluation ? "Interview already completed" : "Interview complete"}
+            {alreadyDone && !evaluation ? "Interview already completed" : "Meeting ended"}
           </h2>
           <p className="mt-2 text-sm text-slate-600">
             Thank you{candidateName ? `, ${candidateName}` : ""}. Your responses were evaluated
@@ -518,7 +679,7 @@ export default function CallPage() {
           )}
           <Link
             href="/careers"
-            className="mt-6 inline-block text-sm font-semibold text-indigo-600 hover:underline"
+            className="mt-6 inline-block text-sm font-semibold text-emerald-700 hover:underline"
           >
             ← Back to careers
           </Link>
@@ -528,37 +689,125 @@ export default function CallPage() {
   );
 }
 
-function ControlButton({
-  children,
-  onClick,
-  disabled,
-  primary,
-  danger,
-  active,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  primary?: boolean;
-  danger?: boolean;
-  active?: boolean;
-}) {
+function IconMute({ off }: { off: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded-lg border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-        danger
-          ? "border-rose-400 bg-rose-600 text-white hover:bg-rose-500"
-          : primary
-            ? "border-indigo-400 bg-indigo-600 text-white hover:bg-indigo-500"
-            : active
-              ? "border-amber-400 bg-amber-500/20 text-amber-100"
-              : "border-white/25 bg-white/5 text-white hover:bg-white/10"
-      }`}
-    >
-      {children}
-    </button>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      {off ? (
+        <>
+          <path
+            d="M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M5 5l14 14M19 11a7 7 0 01-1.5 4.3M5 11a7 7 0 0011.5 5.2"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </>
+      ) : (
+        <>
+          <path
+            d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M5 11a7 7 0 0014 0M12 18v3"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function IconVideo({ off }: { off: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect
+        x="3"
+        y="7"
+        width="12"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path d="M15 10l5-2.5v9L15 14" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      {off && (
+        <path d="M4 4l16 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
+function IconMic() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M5 11a7 7 0 0014 0M12 18v3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconStop() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <rect x="6" y="6" width="12" height="12" rx="2" />
+    </svg>
+  );
+}
+
+function IconRepeat() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconHelp() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M9.5 9a2.5 2.5 0 014.4 1.6c0 1.5-1.5 2-2 2.4M12 17h.01"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconLeave() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M18 6L6 18M6 6l12 12"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

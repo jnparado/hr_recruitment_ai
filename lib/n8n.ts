@@ -1,4 +1,5 @@
 import { appBaseUrl } from "@/lib/app-url";
+import { sendAppEmail } from "@/lib/email";
 
 /** Triggers the n8n workflow when a new application is received. */
 export async function triggerN8nApplication(payload: {
@@ -117,51 +118,15 @@ export function googleCalendarPayload(input: {
 }
 
 /**
- * Send any email payload through n8n (interview invites, reports, etc.).
- * Configure N8N_WEBHOOK_URL to forward `event` + `email` to your mail node.
+ * Send any email payload (interview invites, reports, etc.).
+ * Uses Resend when RESEND_API_KEY is set, otherwise n8n webhook.
  */
 export async function triggerN8nEmail(input: {
   event: string;
   email: { to: string; subject: string; body: string };
   meta?: Record<string, unknown>;
-}): Promise<{ sent: boolean; error?: string }> {
-  const url = process.env.N8N_WEBHOOK_URL;
-  if (!url) {
-    console.info("[n8n-email] queued (no webhook)", {
-      event: input.event,
-      to: input.email.to,
-      subject: input.email.subject,
-    });
-    return { sent: false, error: "N8N_WEBHOOK_URL not configured — email logged only" };
-  }
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(process.env.N8N_WEBHOOK_SECRET
-          ? { "X-Webhook-Secret": process.env.N8N_WEBHOOK_SECRET }
-          : {}),
-      },
-      body: JSON.stringify({
-        event: input.event,
-        timestamp: new Date().toISOString(),
-        email: input.email,
-        ...input.meta,
-      }),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      return { sent: false, error: `n8n returned ${res.status}: ${detail}` };
-    }
-    return { sent: true };
-  } catch (err) {
-    return {
-      sent: false,
-      error: err instanceof Error ? err.message : "n8n email trigger failed",
-    };
-  }
+}): Promise<{ sent: boolean; error?: string; provider?: string }> {
+  return sendAppEmail(input);
 }
 
 function to24h(time: string): string {
