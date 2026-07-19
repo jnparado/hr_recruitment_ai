@@ -33,6 +33,11 @@ export async function triggerN8nApplication(payload: {
         scheduleUrl: `${base}/api/webhooks/n8n/schedule`,
         notifyUrl: `${base}/api/webhooks/n8n/notify`,
         voiceInterviewUrl: `${base}/call/${payload.applicationId}`,
+        trackUrl: `${base}/careers/track?id=${encodeURIComponent(payload.applicationId)}`,
+        confirmationEmail: {
+          to: payload.applicantEmail,
+          subject: `We received your application — ${payload.jobTitle}`,
+        },
       }),
     });
     if (!res.ok) {

@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { createApplication } from "@/lib/db";
 import { appOriginFromRequest } from "@/lib/app-url";
+import { candidateConfirmationEmail } from "@/lib/career-site";
 import { runCareerWebsitePipeline } from "@/lib/career-pipeline";
 import { triggerN8nApplication } from "@/lib/n8n";
 import { resolveJob } from "@/lib/jobs";
@@ -91,6 +92,19 @@ export async function POST(request: Request) {
   });
 
   const origin = appOriginFromRequest(request);
+  const trackUrl = `${origin}/careers/track?id=${encodeURIComponent(applicationId)}`;
+  const confirmationEmail = candidateConfirmationEmail({
+    candidateName: applicantName,
+    candidateEmail: applicantEmail,
+    jobTitle: job.title,
+    applicationId,
+    trackUrl,
+  });
+
+  console.info("[apply] confirmation email queued", {
+    to: confirmationEmail.to,
+    applicationId,
+  });
 
   return Response.json({
     success: true,
@@ -98,9 +112,11 @@ export async function POST(request: Request) {
     resumeUrl: storedResume.storageUrl,
     voiceInterviewUrl: `/call/${applicationId}`,
     voiceInterviewAbsoluteUrl: `${origin}/call/${applicationId}`,
+    trackUrl: `/careers/track?id=${encodeURIComponent(applicationId)}`,
+    confirmationEmail,
     n8nTriggered: n8n.triggered,
     n8nError: n8n.error,
     message:
-      "Application received! Your resume is being parsed, scored, and ranked. Start your AI voice screening below.",
+      "Application received! A confirmation email is on its way. You can track your status anytime.",
   });
 }

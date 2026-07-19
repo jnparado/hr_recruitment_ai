@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import type { DbJob } from "@/lib/types";
 
 export default function JobPostsPage() {
@@ -45,12 +44,9 @@ export default function JobPostsPage() {
               {job.department} · {job.location} · {job.type}
             </p>
             <p className="mt-3 line-clamp-3 text-sm text-slate-600">{job.description}</p>
-            <Link
-              href="/careers"
-              className="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:underline"
-            >
-              View on Career Website →
-            </Link>
+            <p className="mt-3 text-xs text-slate-400">
+              Visible on the public Career Website (candidates only).
+            </p>
           </article>
         ))}
       </div>

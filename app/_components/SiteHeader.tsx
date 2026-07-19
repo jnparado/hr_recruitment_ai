@@ -3,15 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { COMPANY } from "@/lib/career-site";
 
 type SiteHeaderProps = {
   isRecruiter: boolean;
 };
 
-/** Public routes: Career Website + voice call — no recruiter chrome. */
+/** Public Career Website + voice call — candidates only, no recruiter chrome. */
 function isPublicApplicantPath(pathname: string) {
-  return pathname === "/careers" || pathname.startsWith("/call/");
+  return pathname === "/careers" || pathname.startsWith("/careers/") || pathname.startsWith("/call/");
 }
+
+const CAREER_NAV = [
+  { href: "/careers", label: "Jobs", match: (p: string) => p === "/careers" || p.startsWith("/careers/jobs") },
+  { href: "/careers/company", label: "Company", match: (p: string) => p.startsWith("/careers/company") },
+  { href: "/careers/track", label: "Track status", match: (p: string) => p.startsWith("/careers/track") },
+] as const;
 
 export function SiteHeader({ isRecruiter }: SiteHeaderProps) {
   const pathname = usePathname() || "/";
@@ -23,24 +30,32 @@ export function SiteHeader({ isRecruiter }: SiteHeaderProps) {
   if (publicMode) {
     return (
       <header className="sticky top-0 z-20 border-b border-indigo-100 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/careers" className="flex items-center gap-2 font-semibold text-slate-900">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/careers" className="flex shrink-0 items-center gap-2 font-semibold text-slate-900">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
               H
             </span>
-            Career Website
+            <span className="hidden sm:inline">{COMPANY.name}</span>
+            <span className="sm:hidden">Careers</span>
           </Link>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-700">
-              Public
-            </span>
-            <Link
-              href="/careers"
-              className="rounded-lg px-3 py-1.5 font-medium text-slate-700 transition hover:bg-indigo-50"
-            >
-              Open roles
-            </Link>
-          </div>
+          <nav className="flex items-center gap-1 overflow-x-auto text-sm font-medium text-slate-600">
+            {CAREER_NAV.map((item) => {
+              const active = item.match(pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`shrink-0 rounded-lg px-2.5 py-1.5 transition sm:px-3 ${
+                    active
+                      ? "bg-indigo-50 text-indigo-800"
+                      : "hover:bg-indigo-50 hover:text-slate-900"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </header>
     );

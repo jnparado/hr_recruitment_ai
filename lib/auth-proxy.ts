@@ -17,6 +17,11 @@ const RECRUITER_API_PREFIXES = [
   "/api/screen",
 ];
 
+/** Candidate Career Website — recruiters are redirected to the dashboard. */
+function isCareerWebsitePath(pathname: string) {
+  return pathname === "/careers" || pathname.startsWith("/careers/");
+}
+
 function isRecruiterPath(pathname: string) {
   return (
     RECRUITER_PAGE_PREFIXES.some(
@@ -34,6 +39,11 @@ export async function updateSession(request: NextRequest) {
   const loggedIn = isRecruiterSessionToken(
     request.cookies.get(RECRUITER_COOKIE)?.value
   );
+
+  // Career Website is for candidates only — keep recruiters in their tools.
+  if (loggedIn && isCareerWebsitePath(pathname)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
 
   if (isRecruiterPath(pathname) && !loggedIn) {
     if (pathname.startsWith("/api/")) {

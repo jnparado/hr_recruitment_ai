@@ -2,7 +2,6 @@ import {
   CANDIDATE_FLOW_STEPS,
   FlowDiagram,
 } from "@/app/_components/FlowDiagram";
-import { CareerWebsiteFlow } from "@/app/_components/CareerWebsiteFlow";
 
 /** Highlighted stages for the voice screening flow */
 export const CANDIDATE_HIGHLIGHT_STEPS = [
@@ -33,9 +32,7 @@ export function CandidateFlowDiagram({
   );
 }
 
-/** @deprecated Prefer CareerWebsiteFlow on /careers */
+/** @deprecated Use CandidateFlowDiagram */
 export function CareerFlowDiagram(props: CandidateFlowDiagramProps) {
   return <CandidateFlowDiagram {...props} />;
 }
-
-export { CareerWebsiteFlow };

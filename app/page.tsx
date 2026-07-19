@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { CareerWebsiteFlow } from "@/app/_components/CareerWebsiteFlow";
 import { RecruiterDecisionFlow } from "@/app/_components/RecruiterDecisionFlow";
 import { getRecruiter } from "@/lib/auth";
 
@@ -29,14 +28,14 @@ export default async function Home() {
           <h2 className="mt-3 text-2xl font-bold text-slate-900">Career Website</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             For applicants and candidates. No login. Browse open roles, upload a PDF resume,
-            and the automation pipeline parses, scores, ranks, and notifies recruiters.
+            and track your application.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-700">
             {[
-              "Apply for a job + PDF resume upload",
-              "Supabase storage & database record",
-              "n8n trigger + AI resume parsing",
-              "Match JD → score → rank → notify recruiter",
+              "Browse & search open jobs",
+              "Company information",
+              "Apply + PDF resume upload",
+              "Track status & email confirmation",
             ].map((b) => (
               <li key={b} className="flex items-start gap-2">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
@@ -83,8 +82,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mt-14 grid gap-8 lg:grid-cols-2">
-        <CareerWebsiteFlow />
+      <section className="mt-14 max-w-md lg:ml-auto">
         <RecruiterDecisionFlow />
       </section>
     </div>

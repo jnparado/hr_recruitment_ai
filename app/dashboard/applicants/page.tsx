@@ -139,11 +139,7 @@ export default function ApplicantsPage() {
 
       {!loading && candidates.length === 0 && (
         <p className="mt-6 text-sm text-slate-500">
-          No applicants yet. Candidates apply on the{" "}
-          <Link href="/careers" className="text-indigo-600 hover:underline">
-            Career Website
-          </Link>
-          .
+          No applicants yet. Candidates apply on the public Career Website.
         </p>
       )}
 
