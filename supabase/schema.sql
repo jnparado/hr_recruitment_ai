@@ -102,6 +102,20 @@ create index if not exists applications_status_idx on applications(status);
 create index if not exists applications_job_id_idx on applications(job_id);
 create index if not exists interviews_scheduled_date_idx on interviews(scheduled_date);
 
+create table if not exists recruiter_notifications (
+  id uuid primary key default gen_random_uuid(),
+  type text not null default 'application',
+  title text not null,
+  body text not null default '',
+  application_id uuid references applications(id) on delete cascade,
+  href text not null default '/dashboard/applicants',
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists recruiter_notifications_created_idx
+  on recruiter_notifications (created_at desc);
+
 -- Seed sample jobs (safe to re-run — skips if title exists)
 insert into jobs (title, department, location, type, description, requirements)
 select * from (values

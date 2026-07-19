@@ -156,6 +156,17 @@ export async function createApplication(input: {
   } catch (err) {
     console.warn("[db] ensureCandidateStub failed (application still saved):", err);
   }
+  try {
+    await createRecruiterNotification({
+      type: "application",
+      title: "New job application",
+      body: `${input.applicantName} applied for ${input.jobTitle} and uploaded a CV.`,
+      applicationId: app.id,
+      href: `/dashboard/candidates/${app.id}`,
+    });
+  } catch (err) {
+    console.warn("[db] createRecruiterNotification failed:", err);
+  }
   return app;
 }
 
@@ -506,4 +517,94 @@ export async function listDashboardCandidates(): Promise<DashboardCandidate[]> {
       interviewCompletedAt: vi?.completed_at ?? null,
     };
   });
+}
+
+export type RecruiterNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  application_id: string | null;
+  href: string;
+  read_at: string | null;
+  created_at: string;
+};
+
+export async function createRecruiterNotification(input: {
+  type?: string;
+  title: string;
+  body: string;
+  applicationId?: string;
+  href?: string;
+}): Promise<void> {
+  const { error } = await supabaseAdmin().from("recruiter_notifications").insert({
+    type: input.type || "application",
+    title: input.title,
+    body: input.body,
+    application_id: input.applicationId ?? null,
+    href: input.href || "/dashboard/applicants",
+  });
+  if (error) {
+    if (/recruiter_notifications|schema cache/i.test(error.message)) {
+      console.warn(
+        "[db] recruiter_notifications missing — run supabase/migrations/20260719120000_recruiter_notifications.sql"
+      );
+      return;
+    }
+    throw new Error(error.message);
+  }
+}
+
+export async function listRecruiterNotifications(limit = 30): Promise<RecruiterNotification[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("recruiter_notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (!error) {
+    return (data ?? []) as RecruiterNotification[];
+  }
+
+  // Fallback: derive from recent applications if notifications table is missing
+  if (/recruiter_notifications|schema cache/i.test(error.message)) {
+    const { data: apps } = await supabaseAdmin()
+      .from("applications")
+      .select("id, applicant_name, job_title, created_at")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    return (apps ?? []).map((a) => ({
+      id: `app-${a.id}`,
+      type: "application",
+      title: "New job application",
+      body: `${a.applicant_name} applied for ${a.job_title} and uploaded a CV.`,
+      application_id: a.id as string,
+      href: `/dashboard/candidates/${a.id}`,
+      read_at: null,
+      created_at: a.created_at as string,
+    }));
+  }
+
+  throw new Error(error.message);
+}
+
+export async function markRecruiterNotificationRead(id: string): Promise<void> {
+  if (id.startsWith("app-")) return;
+  const { error } = await supabaseAdmin()
+    .from("recruiter_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error && !/recruiter_notifications|schema cache/i.test(error.message)) {
+    throw new Error(error.message);
+  }
+}
+
+export async function markAllRecruiterNotificationsRead(): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from("recruiter_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .is("read_at", null);
+  if (error && !/recruiter_notifications|schema cache/i.test(error.message)) {
+    throw new Error(error.message);
+  }
 }

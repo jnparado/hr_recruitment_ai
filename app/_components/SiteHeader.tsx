@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { RecruiterNotifications } from "@/app/_components/RecruiterNotifications";
 import { COMPANY } from "@/lib/career-site";
 
 type SiteHeaderProps = {
@@ -82,6 +83,7 @@ export function SiteHeader({ isRecruiter }: SiteHeaderProps) {
               <span className="hidden px-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 sm:inline">
                 Recruiter Admin
               </span>
+              <RecruiterNotifications />
               <Link
                 href="/dashboard"
                 className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
