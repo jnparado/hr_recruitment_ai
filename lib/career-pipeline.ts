@@ -4,8 +4,8 @@ import {
   rankApplicationsForJob,
   saveInterview,
 } from "@/lib/db";
+import { runCareerWebsiteFlow } from "@/lib/career-website-flow";
 import { googleCalendarPayload, recruiterEmailPayload } from "@/lib/n8n";
-import { scoreApplication } from "@/lib/score-application";
 
 function nextWeekdaySlot(daysAhead = 2): { date: string; time: string } {
   const d = new Date();
@@ -18,12 +18,12 @@ function nextWeekdaySlot(daysAhead = 2): { date: string; time: string } {
 }
 
 /**
- * Career Website pipeline after apply:
- * Parse → Save → Match JD → Score → Rank → Email payload → Schedule → Calendar → Reminder
- * (n8n can own these steps when configured; this runs as the in-app fallback.)
+ * Full post-apply automation:
+ * Career Website flow (parse → match → notify) + optional auto-schedule for strong matches.
  */
 export async function runCareerWebsitePipeline(applicationId: string) {
-  const scored = await scoreApplication(applicationId);
+  const scored = await runCareerWebsiteFlow(applicationId);
+
   const application = await getApplication(applicationId);
   if (!application) {
     throw new Error("Application not found after scoring.");
@@ -92,19 +92,8 @@ export async function runCareerWebsitePipeline(applicationId: string) {
     };
   }
 
-  console.info("[career-pipeline]", {
-    applicationId,
-    matchScore: scored.matchScore,
-    rank,
-    emailTo: email.to,
-    scheduled: !!schedule,
-  });
-
   return {
-    applicationId,
-    matchScore: scored.matchScore,
-    recommendation: scored.recommendation,
-    fitSummary: scored.fitSummary,
+    ...scored,
     rank,
     email,
     schedule,

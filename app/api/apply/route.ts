@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Fire n8n webhook (external automation can call processUrl).
   const n8n = await triggerN8nApplication({
     applicationId,
     jobId: job.id,
@@ -82,7 +83,9 @@ export async function POST(request: Request) {
     resumePath: storedResume.storagePath,
   });
 
-  // Career Website pipeline: parse → score → rank → email/schedule payloads
+  // Always run in-app Career Website flow so Supabase is updated even without n8n:
+  // Get App → Download → Extract PDF → Parse → Structured Output → Update Candidate
+  // → Get JD → Match → Update Score → Notify Recruiter
   after(async () => {
     try {
       await runCareerWebsitePipeline(applicationId);
