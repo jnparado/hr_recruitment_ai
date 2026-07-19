@@ -148,7 +148,64 @@ export async function createApplication(input: {
     .select()
     .single();
   if (error) throw new Error(error.message);
-  return data as DbApplication;
+
+  const app = data as DbApplication;
+  // Stub candidate row immediately; AI parsing enriches it later.
+  await ensureCandidateStub(app);
+  return app;
+}
+
+/** Minimal candidates row from application form data (before resume parse). */
+export async function ensureCandidateStub(application: {
+  id: string;
+  applicant_name: string;
+  applicant_email: string;
+}): Promise<void> {
+  const { data: existing } = await supabaseAdmin()
+    .from("candidates")
+    .select("id")
+    .eq("application_id", application.id)
+    .maybeSingle();
+  if (existing) return;
+
+  const { error } = await supabaseAdmin().from("candidates").insert({
+    application_id: application.id,
+    name: application.applicant_name,
+    email: application.applicant_email,
+    phone: "",
+    current_role: "",
+    years_of_experience: 0,
+    skills: [],
+    experience: [],
+    education: [],
+    certificates: [],
+  });
+  if (error && !/duplicate|unique/i.test(error.message)) {
+    throw new Error(error.message);
+  }
+}
+
+/** Backfill stubs for applications that never got a candidates row (parse failed / old applies). */
+export async function backfillCandidateStubs(): Promise<number> {
+  const { data: apps, error } = await supabaseAdmin()
+    .from("applications")
+    .select("id, applicant_name, applicant_email");
+  if (error) throw new Error(error.message);
+
+  const { data: cands } = await supabaseAdmin().from("candidates").select("application_id");
+  const have = new Set((cands ?? []).map((c) => c.application_id as string));
+
+  let created = 0;
+  for (const app of apps ?? []) {
+    if (have.has(app.id as string)) continue;
+    await ensureCandidateStub({
+      id: app.id as string,
+      applicant_name: app.applicant_name as string,
+      applicant_email: app.applicant_email as string,
+    });
+    created += 1;
+  }
+  return created;
 }
 
 export async function getApplication(id: string): Promise<DbApplication | null> {
