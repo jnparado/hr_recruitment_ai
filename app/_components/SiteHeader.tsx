@@ -9,9 +9,14 @@ type SiteHeaderProps = {
   isRecruiter: boolean;
 };
 
-/** Public Career Website + voice call — candidates only, no recruiter chrome. */
+/** Public Career Website + voice call + AI Interview Room — candidates only. */
 function isPublicApplicantPath(pathname: string) {
-  return pathname === "/careers" || pathname.startsWith("/careers/") || pathname.startsWith("/call/");
+  return (
+    pathname === "/careers" ||
+    pathname.startsWith("/careers/") ||
+    pathname.startsWith("/call/") ||
+    pathname.startsWith("/ai-interview/")
+  );
 }
 
 const CAREER_NAV = [

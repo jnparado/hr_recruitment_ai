@@ -107,13 +107,48 @@ export default function ApplicantsPage() {
     }
   }
 
+  async function inviteAiInterview(applicationId: string) {
+    setBusyId(applicationId);
+    setError(null);
+    try {
+      const r = await fetch(`/api/dashboard/applications/${applicationId}/invite-ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Invite failed.");
+      setCandidates((prev) =>
+        prev.map((c) =>
+          c.applicationId === applicationId
+            ? { ...c, status: "ai_interview_invited" }
+            : c
+        )
+      );
+      if (d.interviewUrl) {
+        await navigator.clipboard.writeText(d.interviewUrl).catch(() => null);
+        setError(null);
+        alert(
+          `AI Interview invite created.\n\nLink (copied if allowed):\n${d.interviewUrl}\n\nEmail queued for ${d.email?.to || "candidate"}.`
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invite failed.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Applicants</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Candidate Management
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Select a candidate to shortlist, reject, or schedule an interview.
+            View applicants, AI scores, invite to AI Interview Room, then shortlist / reject /
+            schedule a human interview.
           </p>
         </div>
         <button
@@ -186,6 +221,12 @@ export default function ApplicantsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1.5">
+                      <Link
+                        href={`/dashboard/candidates/${c.applicationId}`}
+                        className="text-left text-xs font-semibold text-slate-700 hover:underline"
+                      >
+                        Open profile
+                      </Link>
                       {c.resumeMatchScore == null && (
                         <button
                           type="button"
@@ -194,6 +235,16 @@ export default function ApplicantsPage() {
                           className="text-left text-xs font-semibold text-slate-600 hover:underline disabled:opacity-50"
                         >
                           Score resume
+                        </button>
+                      )}
+                      {c.status !== "rejected" && (
+                        <button
+                          type="button"
+                          disabled={busyId === c.applicationId}
+                          onClick={() => void inviteAiInterview(c.applicationId)}
+                          className="text-left text-xs font-semibold text-indigo-700 hover:underline disabled:opacity-50"
+                        >
+                          Invite to AI Interview
                         </button>
                       )}
                       {c.status !== "rejected" && c.status !== "shortlisted" && (
@@ -216,7 +267,10 @@ export default function ApplicantsPage() {
                           </button>
                         </>
                       )}
-                      {(c.status === "shortlisted" || c.status === "scored") && (
+                      {(c.status === "shortlisted" ||
+                        c.status === "scored" ||
+                        c.status === "interview_completed" ||
+                        c.interviewScore != null) && (
                         <button
                           type="button"
                           onClick={() => {
@@ -228,7 +282,7 @@ export default function ApplicantsPage() {
                           }}
                           className="text-left text-xs font-semibold text-indigo-700 hover:underline"
                         >
-                          Schedule interview
+                          Human interview
                         </button>
                       )}
                       {c.interviewScore != null && (
@@ -236,7 +290,7 @@ export default function ApplicantsPage() {
                           href={`/dashboard/interviews/${c.applicationId}`}
                           className="text-xs font-semibold text-emerald-700 hover:underline"
                         >
-                          Listen →
+                          Interview report →
                         </Link>
                       )}
                       {scheduleFor === c.applicationId && (

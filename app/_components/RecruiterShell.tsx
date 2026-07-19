@@ -5,13 +5,12 @@ import { usePathname } from "next/navigation";
 
 export const RECRUITER_MODULES = [
   { href: "/dashboard", label: "Dashboard", match: (p: string) => p === "/dashboard" },
-  { href: "/dashboard/jobs", label: "Job Posts" },
-  { href: "/dashboard/applicants", label: "Applicants" },
-  { href: "/dashboard/ranking", label: "Candidate Ranking" },
-  { href: "/dashboard/schedule", label: "Interview Schedule" },
-  { href: "/dashboard/analytics", label: "Analytics" },
+  { href: "/dashboard/jobs", label: "Job Management" },
+  { href: "/dashboard/applicants", label: "Candidates" },
+  { href: "/dashboard/ai", label: "AI Features" },
+  { href: "/dashboard/schedule", label: "Interviews" },
   { href: "/dashboard/email", label: "Email Center" },
-  { href: "/dashboard/insights", label: "AI Insights" },
+  { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/dashboard/settings", label: "Settings" },
 ] as const;
 
@@ -23,7 +22,7 @@ export function RecruiterShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden w-52 shrink-0 md:block">
         <div className="sticky top-20 rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-3 shadow-sm">
           <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-            Recruiter
+            Recruiter Admin
           </p>
           <nav className="mt-2 space-y-0.5">
             {RECRUITER_MODULES.map((mod) => {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RecruiterDecisionFlow } from "@/app/_components/RecruiterDecisionFlow";
+import { RecruitmentFlow } from "@/app/_components/RecruitmentFlow";
 import { getRecruiter } from "@/lib/auth";
 
 export default async function Home() {
@@ -15,8 +15,8 @@ export default async function Home() {
           Recruitment on autopilot
         </h1>
         <p className="mt-4 text-lg text-slate-600">
-          A public Career Website for applicants, and private recruiter tools for scoring,
-          ranking, and interviews.
+          Public Career Website for candidates, Recruiter Admin after login, and a secure AI
+          Interview Room for first-stage screening.
         </p>
       </section>
 
@@ -27,22 +27,8 @@ export default async function Home() {
           </span>
           <h2 className="mt-3 text-2xl font-bold text-slate-900">Career Website</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            For applicants and candidates. No login. Browse open roles, upload a PDF resume,
-            and track your application.
+            Browse jobs, apply with a resume, track status — no login.
           </p>
-          <ul className="mt-4 space-y-2 text-sm text-slate-700">
-            {[
-              "Browse & search open jobs",
-              "Company information",
-              "Apply + PDF resume upload",
-              "Track status & email confirmation",
-            ].map((b) => (
-              <li key={b} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
-                {b}
-              </li>
-            ))}
-          </ul>
           <Link
             href="/careers"
             className="mt-6 inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
@@ -53,37 +39,23 @@ export default async function Home() {
 
         <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-7 shadow-sm">
           <span className="inline-flex rounded-full border border-emerald-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-            Recruiter only
+            Recruiter Admin
           </span>
-          <h2 className="mt-3 text-2xl font-bold text-slate-900">Recruiter tools</h2>
+          <h2 className="mt-3 text-2xl font-bold text-slate-900">Internal dashboard</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Login required. Dashboard scores, pipeline, screening, interview assistant, and
-            listen to voice interviews.
+            Jobs, candidates, AI features, interviews, email, and analytics — login required.
           </p>
-          <ul className="mt-4 space-y-2 text-sm text-slate-700">
-            {[
-              "Dashboard with resume & interview scores",
-              "Full recruitment pipeline",
-              "Batch resume screening",
-              "AI interview + recording review",
-            ].map((b) => (
-              <li key={b} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                {b}
-              </li>
-            ))}
-          </ul>
           <Link
             href={recruiter ? "/dashboard" : "/login"}
             className="mt-6 inline-flex items-center rounded-xl border border-emerald-300 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
           >
-            {recruiter ? "Open dashboard →" : "Recruiter login →"}
+            {recruiter ? "Open Recruiter Admin →" : "Recruiter login →"}
           </Link>
         </div>
       </section>
 
-      <section className="mt-14 max-w-md lg:ml-auto">
-        <RecruiterDecisionFlow />
+      <section className="mt-14">
+        <RecruitmentFlow />
       </section>
     </div>
   );

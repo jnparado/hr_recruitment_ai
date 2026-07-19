@@ -3,15 +3,28 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { BrowserSpeechRecognizer, prefetchSpeechVoices, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
+import {
+  BrowserSpeechRecognizer,
+  prefetchSpeechVoices,
+  speakInBrowser,
+  stopBrowserSpeech,
+} from "@/lib/browser-voice";
 import { INTERVIEW_QUESTION_LIMIT } from "@/lib/interview-config";
-import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
+import {
+  AiVoicePanel,
+  CandidateCameraPreview,
+  formatRecordingTime,
+} from "@/app/_components/InterviewRoomVoice";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
 
 type Phase = "loading" | "incoming" | "interview" | "evaluating" | "complete";
 type VoiceState = "idle" | "speaking" | "recording" | "transcribing";
 type SaveStage = "transcript" | "evaluate" | "score";
 
+/**
+ * AI Interview Room — voice interface (no avatar).
+ * Layout: AI voice panel | current question | candidate camera + controls.
+ */
 export default function CallPage() {
   const params = useParams();
   const applicationId = String(params.applicationId || "");
@@ -29,15 +42,23 @@ export default function CallPage() {
   const [thinking, setThinking] = useState(false);
   const [saveStage, setSaveStage] = useState<SaveStage>("transcript");
   const [error, setError] = useState<string | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [supportOpen, setSupportOpen] = useState(false);
+
   const recorderRef = useRef<BrowserSpeechRecognizer | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const sessionRecorderRef = useRef<MediaRecorder | null>(null);
   const sessionChunksRef = useRef<Blob[]>([]);
   const sessionStreamRef = useRef<MediaStream | null>(null);
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mutedRef = useRef(false);
+
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
 
   useEffect(() => {
     if (invalidLink) return;
-
     fetch(`/api/applications/${applicationId}`)
       .then((r) => r.json())
       .then((d) => {
@@ -60,14 +81,36 @@ export default function CallPage() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, voiceState, thinking]);
+    if (voiceState === "recording") {
+      setRecordSeconds(0);
+      recordTimerRef.current = setInterval(() => {
+        setRecordSeconds((s) => s + 1);
+      }, 1000);
+    } else if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    return () => {
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    };
+  }, [voiceState]);
 
-  useEffect(() => () => {
-    stopBrowserSpeech();
-    sessionRecorderRef.current?.stop();
-    sessionStreamRef.current?.getTracks().forEach((t) => t.stop());
-  }, []);
+  useEffect(
+    () => () => {
+      stopBrowserSpeech();
+      sessionRecorderRef.current?.stop();
+      sessionStreamRef.current?.getTracks().forEach((t) => t.stop());
+    },
+    []
+  );
+
+  const questionsAsked = messages.filter((m) => m.role === "assistant").length;
+  const currentQuestion =
+    [...messages].reverse().find((m) => m.role === "assistant")?.content || "";
+  const questionIndex = Math.min(
+    Math.max(questionsAsked, 1),
+    INTERVIEW_QUESTION_LIMIT
+  );
 
   async function startSessionRecording() {
     try {
@@ -117,12 +160,22 @@ export default function CallPage() {
   }
 
   async function speak(text: string) {
+    if (mutedRef.current) {
+      setVoiceState("idle");
+      return;
+    }
     setVoiceState("speaking");
     try {
       await speakInBrowser(text);
     } finally {
       setVoiceState((s) => (s === "speaking" ? "idle" : s));
     }
+  }
+
+  async function repeatQuestion() {
+    if (!currentQuestion || voiceState === "recording") return;
+    stopSpeaking();
+    await speak(currentQuestion);
   }
 
   async function toggleRecording() {
@@ -137,12 +190,11 @@ export default function CallPage() {
         const updated: ChatMessage[] = [...messages, { role: "user", content: text }];
         setMessages(updated);
 
-        const questionsAsked = updated.filter((m) => m.role === "assistant").length;
-        if (questionsAsked >= INTERVIEW_QUESTION_LIMIT) {
+        const asked = updated.filter((m) => m.role === "assistant").length;
+        if (asked >= INTERVIEW_QUESTION_LIMIT) {
           void finalizeInterview(updated);
           return;
         }
-
         void fetchNext(updated);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Transcription failed.");
@@ -188,13 +240,9 @@ export default function CallPage() {
       const updated: ChatMessage[] = [...history, { role: "assistant", content: data.message }];
       setMessages(updated);
       setThinking(false);
-      // Speak immediately; don't block UI updates
       void speak(data.message).then(() => {
         if (data.done) void finalizeInterview(updated);
       });
-      if (!data.done) return;
-      // If done, finalize after speech in the then() above
-      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -221,7 +269,7 @@ export default function CallPage() {
           const upData = await up.json();
           if (up.ok && upData.recordingUrl) recordingUrl = upData.recordingUrl;
         } catch {
-          // Keep going — transcript is still saved
+          // keep going
         }
       }
 
@@ -290,144 +338,165 @@ export default function CallPage() {
     void fetchNext([]);
   }
 
-  return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-      <div className="mb-8">
-        <CandidateFlowDiagram
-          activeStep={
-            phase === "incoming" || phase === "loading"
-              ? "AI Calls Candidate"
-              : phase === "interview"
-                ? "Voice Interview"
-                : phase === "evaluating"
-                  ? saveStage === "transcript"
-                    ? "Speech to Text"
-                    : saveStage === "evaluate"
-                      ? "Evaluate Answers"
-                      : "Score"
-                  : phase === "complete"
-                    ? "Recruiter Dashboard"
-                    : undefined
-          }
-          variant="compact"
-        />
-      </div>
+  const panelState =
+    voiceState === "speaking"
+      ? "speaking"
+      : voiceState === "recording"
+        ? "listening"
+        : thinking || voiceState === "transcribing"
+          ? "thinking"
+          : "idle";
 
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       {(error || invalidLink) && (
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-          {error ||
-            "Invalid interview link. Please apply again from the careers page."}
+          {error || "Invalid interview link. Please apply again from the careers page."}
         </div>
       )}
 
       {phase === "loading" && (
         <div className="flex flex-col items-center py-20 text-slate-500">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
-          <p className="mt-3 text-sm">Connecting…</p>
+          <p className="mt-3 text-sm">Opening Interview Room…</p>
         </div>
       )}
 
       {phase === "incoming" && (
-        <div className="flex flex-col items-center rounded-3xl border border-slate-200 bg-gradient-to-b from-indigo-50 to-white p-10 shadow-lg">
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-indigo-600">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-40" />
-            <svg viewBox="0 0 24 24" fill="white" className="h-10 w-10">
-              <path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011-.24 11.36 11.36 0 003.58.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.58 1 1 0 01-.24 1l-2.2 2.21z" />
-            </svg>
-          </div>
-          <p className="mt-6 text-sm font-medium text-indigo-600">Incoming AI screening call</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{candidateName || "Candidate"}</h1>
+        <div className="mx-auto flex max-w-lg flex-col items-center rounded-2xl border border-slate-200 bg-white p-10 shadow-sm">
+          <p className="text-sm font-medium text-indigo-600">AI Interview Room</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">
+            {candidateName || "Candidate"}
+          </h1>
           <p className="text-slate-500">{jobTitle || "Screening interview"}</p>
           <p className="mt-4 max-w-sm text-center text-sm text-slate-600">
-            Our AI interviewer has read your resume and will ask personalized questions about
-            your experience, skills, salary expectations, and availability. Allow microphone
-            access when prompted.
+            Voice-based AI interview — no avatar. Allow camera and microphone when prompted.
+            Answers are evaluated and a report is sent to the recruiter.
           </p>
           <button
+            type="button"
             onClick={acceptCall}
             disabled={invalidLink}
-            className="mt-8 rounded-full bg-emerald-500 px-10 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="mt-8 rounded-xl bg-indigo-600 px-8 py-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:bg-slate-300"
           >
-            Accept call
+            Enter Interview Room
           </button>
         </div>
       )}
 
       {(phase === "interview" || phase === "evaluating") && (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-5 py-3">
-            <p className="text-sm font-semibold text-slate-900">Voice interview — {jobTitle}</p>
-            <p className="text-xs text-slate-500">
-              {phase === "evaluating"
-                ? saveStage === "transcript"
-                  ? "Converting speech to text and saving your answers…"
-                  : saveStage === "evaluate"
-                    ? "Evaluating your answers…"
-                    : "Saving your score…"
-                : `Speak your answers using the mic button · ${Math.min(messages.filter((m) => m.role === "assistant").length, INTERVIEW_QUESTION_LIMIT)}/${INTERVIEW_QUESTION_LIMIT} questions`}
+        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 text-white shadow-xl">
+          <header className="border-b border-white/10 px-5 py-3">
+            <h1 className="text-sm font-semibold tracking-wide sm:text-base">
+              AI Interview – {jobTitle || "Open Role"}
+            </h1>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Voice interface · report goes to Recruiter Admin
             </p>
-          </div>
-          <div className="flex max-h-[50vh] min-h-[280px] flex-col gap-3 overflow-y-auto p-5">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                  m.role === "assistant"
-                    ? "self-start rounded-bl-sm bg-slate-100 text-slate-800"
-                    : "self-end rounded-br-sm bg-indigo-600 text-white"
-                }`}
-              >
-                {m.content}
-              </div>
-            ))}
-            {voiceState === "speaking" && (
-              <p className="self-start text-xs text-indigo-600">AI is speaking…</p>
-            )}
-            {voiceState === "transcribing" && (
-              <p className="self-end text-xs text-slate-500">Transcribing your answer…</p>
-            )}
-            {thinking && (
-              <div className="self-start rounded-2xl bg-slate-100 px-4 py-3">
-                <span className="flex gap-1">
-                  {[0, 150, 300].map((d) => (
-                    <span
-                      key={d}
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400"
-                      style={{ animationDelay: `${d}ms` }}
-                    />
-                  ))}
-                </span>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-          {phase === "interview" && (
-            <div className="flex justify-center border-t border-slate-200 p-5">
-              <button
-                onClick={toggleRecording}
-                disabled={thinking || voiceState === "transcribing" || voiceState === "speaking"}
-                className={`flex h-16 w-16 items-center justify-center rounded-full text-white transition ${
-                  voiceState === "recording"
-                    ? "animate-pulse bg-rose-500 hover:bg-rose-400"
-                    : "bg-indigo-600 hover:bg-indigo-500"
-                } disabled:bg-slate-300`}
-              >
-                {voiceState === "recording" ? (
-                  <span className="h-5 w-5 rounded-sm bg-white" />
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7">
-                    <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z" />
-                    <path d="M18 11a1 1 0 1 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.92V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.08A6 6 0 0 0 18 11z" />
-                  </svg>
-                )}
-              </button>
+          </header>
+
+          <div className="grid gap-4 p-4 md:grid-cols-2 md:p-5">
+            <AiVoicePanel
+              state={
+                phase === "evaluating"
+                  ? "thinking"
+                  : (panelState as "idle" | "speaking" | "listening" | "thinking")
+              }
+              label={
+                phase === "evaluating"
+                  ? saveStage === "transcript"
+                    ? "Saving transcript…"
+                    : saveStage === "evaluate"
+                      ? "Evaluating answers…"
+                      : "Saving score…"
+                  : undefined
+              }
+            />
+
+            <div className="flex min-h-[200px] flex-col rounded-xl border border-white/15 bg-slate-900/60 p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Question {questionsAsked === 0 ? "—" : questionIndex} of{" "}
+                {INTERVIEW_QUESTION_LIMIT}
+              </p>
+              <p className="mt-4 flex-1 text-lg font-medium leading-relaxed text-white">
+                {phase === "evaluating"
+                  ? "Wrapping up your interview…"
+                  : currentQuestion ||
+                    (thinking ? "Preparing your first question…" : "Waiting for AI…")}
+              </p>
+              {voiceState === "transcribing" && (
+                <p className="mt-3 text-xs text-slate-400">Transcribing your answer…</p>
+              )}
             </div>
-          )}
+          </div>
+
+          <div className="border-t border-white/10 bg-slate-900/80 px-4 py-5 sm:px-5">
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <CandidateCameraPreview
+                enabled={phase === "interview"}
+                muted={muted}
+              />
+              <div className="text-center sm:text-right">
+                <p className="text-sm font-medium text-rose-300">
+                  {voiceState === "recording"
+                    ? `Recording: ${formatRecordingTime(recordSeconds)}`
+                    : phase === "evaluating"
+                      ? "Processing…"
+                      : "Ready to record"}
+                </p>
+              </div>
+            </div>
+
+            {phase === "interview" && (
+              <div className="mt-5 flex flex-wrap justify-center gap-2 sm:gap-3">
+                <ControlButton
+                  onClick={() => {
+                    const next = !muted;
+                    setMuted(next);
+                    if (next) stopSpeaking();
+                  }}
+                  active={muted}
+                >
+                  {muted ? "Unmute" : "Mute"}
+                </ControlButton>
+                <ControlButton
+                  onClick={() => void repeatQuestion()}
+                  disabled={!currentQuestion || voiceState === "recording" || thinking}
+                >
+                  Repeat Question
+                </ControlButton>
+                <ControlButton
+                  onClick={() => void toggleRecording()}
+                  disabled={thinking || voiceState === "transcribing" || voiceState === "speaking"}
+                  primary={voiceState !== "recording"}
+                  danger={voiceState === "recording"}
+                >
+                  {voiceState === "recording" ? "Submit Answer" : "Start Answer"}
+                </ControlButton>
+                <ControlButton onClick={() => setSupportOpen((v) => !v)}>
+                  Support
+                </ControlButton>
+              </div>
+            )}
+
+            {supportOpen && (
+              <div className="mx-auto mt-4 max-w-md rounded-lg border border-white/10 bg-slate-950/80 p-3 text-center text-xs text-slate-300">
+                Need help? Email{" "}
+                <a
+                  href="mailto:careers@horizontalent.example"
+                  className="text-indigo-300 underline"
+                >
+                  careers@horizontalent.example
+                </a>
+                . Technical issues: refresh the page and re-check camera/mic permissions.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {phase === "complete" && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
+        <div className="mx-auto max-w-lg rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-2xl text-white">
             ✓
           </div>
@@ -435,13 +504,15 @@ export default function CallPage() {
             {alreadyDone && !evaluation ? "Interview already completed" : "Interview complete"}
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Thank you{candidateName ? `, ${candidateName}` : ""}. Your responses have been scored
-            and sent to our recruiting team.
+            Thank you{candidateName ? `, ${candidateName}` : ""}. Your responses were evaluated
+            and the report was sent to the recruiting team.
           </p>
           {evaluation && (
             <div className="mt-6 rounded-xl border border-emerald-200 bg-white p-4 text-left">
-              <p className="text-sm text-slate-500">Your screening score</p>
-              <p className="text-3xl font-bold text-emerald-600">{evaluation.overallScore}/100</p>
+              <p className="text-sm text-slate-500">Screening score</p>
+              <p className="text-3xl font-bold text-emerald-600">
+                {evaluation.overallScore}/100
+              </p>
               <p className="mt-2 text-sm text-slate-600">{evaluation.recommendationReason}</p>
             </div>
           )}
@@ -454,5 +525,40 @@ export default function CallPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function ControlButton({
+  children,
+  onClick,
+  disabled,
+  primary,
+  danger,
+  active,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  danger?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-lg border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+        danger
+          ? "border-rose-400 bg-rose-600 text-white hover:bg-rose-500"
+          : primary
+            ? "border-indigo-400 bg-indigo-600 text-white hover:bg-indigo-500"
+            : active
+              ? "border-amber-400 bg-amber-500/20 text-amber-100"
+              : "border-white/25 bg-white/5 text-white hover:bg-white/10"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

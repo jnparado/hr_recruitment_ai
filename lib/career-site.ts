@@ -25,6 +25,7 @@ export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
   shortlisted: "Shortlisted",
   rejected: "Not moving forward",
   interview_scheduled: "Interview scheduled",
+  ai_interview_invited: "AI interview invited",
   interview_transcribed: "Interview completed",
   interview_completed: "Interview completed",
 };

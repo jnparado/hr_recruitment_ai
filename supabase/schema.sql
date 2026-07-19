@@ -10,7 +10,9 @@ create table if not exists jobs (
   description text not null,
   requirements text not null default '',
   active boolean not null default true,
-  created_at timestamptz not null default now()
+  status text not null default 'open',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists applications (
@@ -24,6 +26,8 @@ create table if not exists applications (
   status text not null default 'received',
   match_score integer,
   rank integer,
+  notes text not null default '',
+  tags jsonb not null default '[]',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -71,6 +75,28 @@ create table if not exists voice_interviews (
 
 create index if not exists voice_interviews_application_idx on voice_interviews(application_id);
 create index if not exists voice_interviews_score_idx on voice_interviews(overall_score desc);
+
+create table if not exists ai_interview_invites (
+  id uuid primary key default gen_random_uuid(),
+  token text not null unique,
+  application_id uuid not null references applications(id) on delete cascade,
+  job_title text not null default '',
+  candidate_name text not null,
+  candidate_email text not null,
+  duration_minutes integer not null default 30,
+  deadline timestamptz not null,
+  status text not null default 'pending',
+  consent_at timestamptz,
+  devices_ok_at timestamptz,
+  identity_ok_at timestamptz,
+  verified_at timestamptz,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists ai_interview_invites_token_idx on ai_interview_invites(token);
+create index if not exists ai_interview_invites_application_idx on ai_interview_invites(application_id);
 
 create index if not exists applications_status_idx on applications(status);
 create index if not exists applications_job_id_idx on applications(job_id);

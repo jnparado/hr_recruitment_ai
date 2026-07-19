@@ -13,6 +13,16 @@ export async function listJobs(): Promise<DbJob[]> {
   return (data ?? []) as DbJob[];
 }
 
+/** All jobs for recruiter admin (open, closed, archived). */
+export async function listAllJobs(): Promise<DbJob[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("jobs")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DbJob[];
+}
+
 export async function getJob(id: string): Promise<DbJob | null> {
   const { data, error } = await supabaseAdmin()
     .from("jobs")
@@ -21,6 +31,99 @@ export async function getJob(id: string): Promise<DbJob | null> {
     .single();
   if (error) return null;
   return data as DbJob;
+}
+
+export async function createJob(input: {
+  title: string;
+  department: string;
+  location: string;
+  type: string;
+  description: string;
+  requirements: string;
+}): Promise<DbJob> {
+  const base = {
+    title: input.title,
+    department: input.department,
+    location: input.location,
+    type: input.type,
+    description: input.description,
+    requirements: input.requirements,
+    active: true,
+  };
+
+  let { data, error } = await supabaseAdmin()
+    .from("jobs")
+    .insert({ ...base, status: "open" })
+    .select()
+    .single();
+
+  if (error && /status/i.test(error.message)) {
+    ({ data, error } = await supabaseAdmin().from("jobs").insert(base).select().single());
+  }
+  if (error) throw new Error(error.message);
+  return data as DbJob;
+}
+
+export async function updateJob(
+  id: string,
+  input: Partial<{
+    title: string;
+    department: string;
+    location: string;
+    type: string;
+    description: string;
+    requirements: string;
+    active: boolean;
+    status: "open" | "closed" | "archived";
+  }>
+): Promise<DbJob> {
+  const patch: Record<string, unknown> = { ...input };
+  if (input.status === "open") patch.active = true;
+  if (input.status === "closed" || input.status === "archived") patch.active = false;
+  if (input.active === true) patch.status = "open";
+  if (input.active === false && !input.status) patch.status = "closed";
+  patch.updated_at = new Date().toISOString();
+
+  let { data, error } = await supabaseAdmin()
+    .from("jobs")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error && /(status|updated_at)/i.test(error.message)) {
+    const fallback: Record<string, unknown> = { ...input };
+    delete fallback.status;
+    delete fallback.updated_at;
+    if (input.status === "open") fallback.active = true;
+    if (input.status === "closed" || input.status === "archived") fallback.active = false;
+    ({ data, error } = await supabaseAdmin()
+      .from("jobs")
+      .update(fallback)
+      .eq("id", id)
+      .select()
+      .single());
+  }
+  if (error) throw new Error(error.message);
+  return data as DbJob;
+}
+
+export async function updateApplicationNotesTags(
+  id: string,
+  input: { notes?: string; tags?: string[] }
+): Promise<void> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (input.notes !== undefined) patch.notes = input.notes;
+  if (input.tags !== undefined) patch.tags = input.tags;
+  const { error } = await supabaseAdmin().from("applications").update(patch).eq("id", id);
+  if (error) {
+    if (/(notes|tags)/i.test(error.message)) {
+      throw new Error(
+        "Notes/tags columns missing. Run supabase/migrations/20260719000000_ai_interview_and_jobs.sql"
+      );
+    }
+    throw new Error(error.message);
+  }
 }
 
 export async function createApplication(input: {

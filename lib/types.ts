@@ -136,7 +136,9 @@ export interface DbJob {
   description: string;
   requirements: string;
   active: boolean;
+  status?: "open" | "closed" | "archived";
   created_at: string;
+  updated_at?: string;
 }
 
 export interface DbApplication {
@@ -150,6 +152,27 @@ export interface DbApplication {
   status: string;
   match_score: number | null;
   rank: number | null;
+  notes?: string;
+  tags?: string[];
+  created_at: string;
+}
+
+export interface DbAiInterviewInvite {
+  id: string;
+  token: string;
+  application_id: string;
+  job_title: string;
+  candidate_name: string;
+  candidate_email: string;
+  duration_minutes: number;
+  deadline: string;
+  status: string;
+  consent_at: string | null;
+  devices_ok_at: string | null;
+  identity_ok_at: string | null;
+  verified_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
   created_at: string;
 }
 
