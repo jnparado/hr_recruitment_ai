@@ -46,6 +46,10 @@ export interface DashboardCandidate {
   recommendation: string | null;
   appliedAt: string;
   interviewCompletedAt: string | null;
+  phone?: string;
+  currentRole?: string;
+  yearsOfExperience?: number;
+  skills?: string[];
 }
 
 export interface InterviewEvaluation {

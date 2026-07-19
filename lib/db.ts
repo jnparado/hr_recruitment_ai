@@ -489,10 +489,16 @@ export async function listDashboardCandidates(): Promise<DashboardCandidate[]> {
   if (rows.length === 0) return [];
 
   const ids = rows.map((a) => a.id);
-  const { data: interviews } = await supabaseAdmin()
-    .from("voice_interviews")
-    .select("application_id, overall_score, recommendation, completed_at")
-    .in("application_id", ids);
+  const [{ data: interviews }, { data: parsed }] = await Promise.all([
+    supabaseAdmin()
+      .from("voice_interviews")
+      .select("application_id, overall_score, recommendation, completed_at")
+      .in("application_id", ids),
+    supabaseAdmin()
+      .from("candidates")
+      .select("application_id, phone, current_role, years_of_experience, skills, name, email")
+      .in("application_id", ids),
+  ]);
 
   const interviewMap = new Map(
     (interviews ?? []).map((v) => [
@@ -501,12 +507,28 @@ export async function listDashboardCandidates(): Promise<DashboardCandidate[]> {
     ])
   );
 
+  const parsedMap = new Map(
+    (parsed ?? []).map((c) => [
+      c.application_id as string,
+      c as {
+        phone?: string;
+        current_role?: string;
+        years_of_experience?: number;
+        skills?: string[];
+        name?: string;
+        email?: string;
+      },
+    ])
+  );
+
   return rows.map((a) => {
     const vi = interviewMap.get(a.id);
+    const p = parsedMap.get(a.id);
+    const skills = Array.isArray(p?.skills) ? p.skills.map(String) : [];
     return {
       applicationId: a.id,
-      candidateName: a.applicant_name,
-      email: a.applicant_email,
+      candidateName: p?.name || a.applicant_name,
+      email: p?.email || a.applicant_email,
       jobTitle: a.job_title,
       status: a.status,
       resumeMatchScore: a.match_score,
@@ -515,6 +537,10 @@ export async function listDashboardCandidates(): Promise<DashboardCandidate[]> {
       recommendation: vi?.recommendation ?? null,
       appliedAt: a.created_at,
       interviewCompletedAt: vi?.completed_at ?? null,
+      phone: p?.phone || "",
+      currentRole: p?.current_role || "",
+      yearsOfExperience: p?.years_of_experience ?? 0,
+      skills,
     };
   });
 }
