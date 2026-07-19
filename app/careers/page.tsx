@@ -71,18 +71,20 @@ export default function CareersPage() {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <section className="text-center">
         <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-          We&apos;re hiring
+          Public · No login required
         </span>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-900">Careers</h1>
+        <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-900">
+          Career Website
+        </h1>
         <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-          Apply in minutes. Upload your resume and our AI-powered pipeline handles parsing,
-          job matching, scoring, and interview scheduling — orchestrated by n8n.
+          For applicants and candidates. Apply to an open role, upload your PDF resume, and our
+          automation pipeline handles storage, parsing, scoring, ranking, and recruiter notification.
         </p>
       </section>
 
       <div className="mt-10">
         <CareerWebsiteFlow
-          activeStep={success ? "n8n Trigger" : "Candidate Applies"}
+          activeStep={success ? "n8n Trigger" : "Apply for a Job"}
         />
       </div>
 

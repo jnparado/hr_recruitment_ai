@@ -175,6 +175,15 @@ export async function saveInterview(input: {
   return { id: data.id as string };
 }
 
+export async function listScheduledInterviews() {
+  const { data, error } = await supabaseAdmin()
+    .from("interviews")
+    .select("*")
+    .order("scheduled_date", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export async function markReminderSent(interviewId: string): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("interviews")

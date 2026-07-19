@@ -1,86 +1,10 @@
 import Link from "next/link";
-import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
 import { CareerWebsiteFlow } from "@/app/_components/CareerWebsiteFlow";
-import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
+import { RecruiterDecisionFlow } from "@/app/_components/RecruiterDecisionFlow";
 import { getRecruiter } from "@/lib/auth";
-
-const candidateFeature = {
-  href: "/careers",
-  title: "Career Website",
-  description:
-    "Public careers page where candidates browse open roles and apply with a PDF resume. Applications flow through Supabase Storage and trigger n8n automation.",
-  bullets: [
-    "Candidate apply form (PDF upload)",
-    "Stored in Supabase Storage",
-    "Triggers n8n workflow",
-    "AI parses name, skills, experience, education, certificates",
-  ],
-  cta: "View careers",
-  primary: true as const,
-};
-
-const recruiterFeatures = [
-  {
-    href: "/pipeline",
-    title: "Recruitment Pipeline",
-    description:
-      "The full hiring workflow in one run — from resume intake through extraction, job matching, ranking, interview scheduling, and a recruiter report.",
-    bullets: [
-      "Extract skills, experience & certificates",
-      "Match & rank against job openings",
-      "Auto-schedule qualified candidates",
-      "Generate executive recruiter report",
-    ],
-    cta: "Run pipeline",
-  },
-  {
-    href: "/screening",
-    title: "AI Resume Screening",
-    description:
-      "Upload a batch of resumes against a job description. Cursor reads every resume, scores the match, ranks candidates, and flags skill gaps.",
-    bullets: [
-      "Reads PDF, DOCX & TXT resumes",
-      "Matches job descriptions",
-      "Ranks candidates 0–100",
-      "Detects critical skill gaps",
-    ],
-    cta: "Screen resumes",
-  },
-  {
-    href: "/interview",
-    title: "AI Interview Assistant",
-    description:
-      "Cursor conducts the first screening interview by voice or text — one question at a time — then delivers a candidate score and a clear hire recommendation.",
-    bullets: [
-      "Real voice interviews (browser speech)",
-      "Experience & skills deep-dive",
-      "Salary expectations & availability",
-      "Score + advance/reject call",
-    ],
-    cta: "Start an interview",
-  },
-];
-
-const audiences = [
-  { title: "Recruitment agencies", text: "Screen hundreds of applicants per role without adding headcount." },
-  { title: "HR teams", text: "Give hiring managers a ranked shortlist and interview notes on day one." },
-  { title: "Job marketplaces", text: "Embed instant candidate–job matching and automated screening." },
-];
 
 export default async function Home() {
   const recruiter = await getRecruiter();
-  const features = [
-    candidateFeature,
-    ...recruiterFeatures.map((f) =>
-      recruiter
-        ? f
-        : {
-            ...f,
-            href: `/login?next=${encodeURIComponent(f.href)}`,
-            cta: "Recruiter login",
-          }
-    ),
-  ];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -92,77 +16,76 @@ export default async function Home() {
           Recruitment on autopilot
         </h1>
         <p className="mt-4 text-lg text-slate-600">
-          Candidates apply without an account. Recruiters sign in to run screening,
-          scoring, interviews, and reports.
+          A public Career Website for applicants, and private recruiter tools for scoring,
+          ranking, and interviews.
         </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+      </section>
+
+      <section className="mt-14 grid gap-8 lg:grid-cols-2">
+        <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-7 shadow-sm">
+          <span className="inline-flex rounded-full border border-indigo-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-700">
+            Public
+          </span>
+          <h2 className="mt-3 text-2xl font-bold text-slate-900">Career Website</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            For applicants and candidates. No login. Browse open roles, upload a PDF resume,
+            and the automation pipeline parses, scores, ranks, and notifies recruiters.
+          </p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-700">
+            {[
+              "Apply for a job + PDF resume upload",
+              "Supabase storage & database record",
+              "n8n trigger + AI resume parsing",
+              "Match JD → score → rank → notify recruiter",
+            ].map((b) => (
+              <li key={b} className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
+                {b}
+              </li>
+            ))}
+          </ul>
           <Link
             href="/careers"
-            className="inline-flex items-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
+            className="mt-6 inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
           >
-            Browse open roles →
+            Open Career Website →
           </Link>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-7 shadow-sm">
+          <span className="inline-flex rounded-full border border-emerald-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+            Recruiter only
+          </span>
+          <h2 className="mt-3 text-2xl font-bold text-slate-900">Recruiter tools</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Login required. Dashboard scores, pipeline, screening, interview assistant, and
+            listen to voice interviews.
+          </p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-700">
+            {[
+              "Dashboard with resume & interview scores",
+              "Full recruitment pipeline",
+              "Batch resume screening",
+              "AI interview + recording review",
+            ].map((b) => (
+              <li key={b} className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                {b}
+              </li>
+            ))}
+          </ul>
           <Link
             href={recruiter ? "/dashboard" : "/login"}
-            className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-6 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+            className="mt-6 inline-flex items-center rounded-xl border border-emerald-300 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
           >
-            {recruiter ? "Recruiter dashboard →" : "Recruiter login"}
+            {recruiter ? "Open dashboard →" : "Recruiter login →"}
           </Link>
         </div>
       </section>
 
-      <section className="mt-14 space-y-6">
+      <section className="mt-14 grid gap-8 lg:grid-cols-2">
         <CareerWebsiteFlow />
-        <CandidateFlowDiagram />
-        <RecruiterFlowDiagram />
-      </section>
-
-      <section className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {features.map((f) => (
-          <div
-            key={f.title}
-            className={`flex flex-col rounded-2xl border p-7 shadow-sm transition hover:shadow-md ${
-              "primary" in f && f.primary
-                ? "border-indigo-300 bg-gradient-to-br from-indigo-50 to-white ring-1 ring-indigo-200"
-                : "border-slate-200 bg-white"
-            }`}
-          >
-            <h2 className="text-xl font-semibold text-slate-900">{f.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{f.description}</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-700">
-              {f.bullets.map((b) => (
-                <li key={b} className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
-                  {b}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href={f.href}
-              className={`mt-6 inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                "primary" in f && f.primary
-                  ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                  : "border border-slate-300 text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {f.cta} →
-            </Link>
-          </div>
-        ))}
-      </section>
-
-      <section className="mt-16">
-        <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Built for
-        </h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          {audiences.map((a) => (
-            <div key={a.title} className="rounded-xl border border-slate-200 bg-white p-5">
-              <h3 className="font-semibold text-slate-900">{a.title}</h3>
-              <p className="mt-1.5 text-sm text-slate-600">{a.text}</p>
-            </div>
-          ))}
-        </div>
+        <RecruiterDecisionFlow />
       </section>
     </div>
   );

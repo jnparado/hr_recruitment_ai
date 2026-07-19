@@ -1,247 +1,45 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
-import type { DashboardCandidate } from "@/lib/types";
+import { RecruiterDecisionFlow } from "@/app/_components/RecruiterDecisionFlow";
+import { RECRUITER_MODULES } from "@/app/_components/RecruiterShell";
 
-function scoreClass(score: number | null) {
-  if (score == null) return "text-slate-400";
-  if (score >= 70) return "text-emerald-600";
-  if (score >= 45) return "text-amber-600";
-  return "text-rose-600";
-}
-
-function recBadge(rec: string | null) {
-  if (!rec) return "bg-slate-100 text-slate-600";
-  if (rec === "advance") return "bg-emerald-100 text-emerald-800";
-  if (rec === "maybe") return "bg-amber-100 text-amber-800";
-  return "bg-rose-100 text-rose-800";
-}
-
-export default function DashboardPage() {
-  const [candidates, setCandidates] = useState<DashboardCandidate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [scoringId, setScoringId] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await fetch("/api/dashboard");
-      const d = await r.json();
-      if (!r.ok || d.error) throw new Error(d.error || "Failed to load dashboard.");
-      setCandidates(d.candidates ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  async function scoreResume(applicationId: string) {
-    setScoringId(applicationId);
-    setError(null);
-    try {
-      const r = await fetch(`/api/applications/${applicationId}/score`, {
-        method: "POST",
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Scoring failed.");
-      setCandidates((prev) =>
-        prev.map((c) =>
-          c.applicationId === applicationId
-            ? {
-                ...c,
-                resumeMatchScore: d.matchScore,
-                status: "scored",
-              }
-            : c
-        )
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Scoring failed.");
-    } finally {
-      setScoringId(null);
-    }
-  }
-
-  const interviewed = candidates.filter((c) => c.interviewScore != null);
-  const scored = candidates.filter((c) => c.resumeMatchScore != null);
-  const avgResume =
-    scored.length > 0
-      ? Math.round(
-          scored.reduce((s, c) => s + (c.resumeMatchScore ?? 0), 0) / scored.length
-        )
-      : 0;
-  const avgScore =
-    interviewed.length > 0
-      ? Math.round(
-          interviewed.reduce((s, c) => s + (c.interviewScore ?? 0), 0) /
-            interviewed.length
-        )
-      : 0;
+export default function DashboardHomePage() {
+  const modules = RECRUITER_MODULES.filter((m) => m.href !== "/dashboard");
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
             Recruiter Dashboard
           </h1>
           <p className="mt-2 text-slate-600">
-            Resume match scores and AI voice interview results for every applicant.
+            Login → manage job posts, applicants, ranking, schedules, and outreach.
           </p>
         </div>
-        <button
-          onClick={() => void load()}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        <Link
+          href="/dashboard/applicants"
+          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
         >
-          Refresh
-        </button>
+          View applicants →
+        </Link>
       </div>
 
-      <div className="mt-6">
-        <RecruiterFlowDiagram activeStep="Recruiter Report" variant="compact" />
-      </div>
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-4">
-        {[
-          { label: "Total applications", value: candidates.length },
-          {
-            label: "Avg resume score",
-            value: scored.length ? `${avgResume}/100` : "—",
-          },
-          { label: "Voice interviews done", value: interviewed.length },
-          {
-            label: "Avg interview score",
-            value: interviewed.length ? `${avgScore}/100` : "—",
-          },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {modules.map((m) => (
+          <Link
+            key={m.href}
+            href={m.href}
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              {s.label}
-            </p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{s.value}</p>
-          </div>
+            <p className="font-semibold text-slate-900">{m.label}</p>
+            <p className="mt-1 text-xs text-slate-500">Open module</p>
+          </Link>
         ))}
       </div>
 
-      {error && (
-        <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-          {error}
-        </div>
-      )}
-
-      {loading && <p className="mt-8 text-sm text-slate-500">Loading candidates…</p>}
-
-      {!loading && candidates.length === 0 && !error && (
-        <p className="mt-8 text-sm text-slate-500">
-          No applications yet. Candidates apply at{" "}
-          <Link href="/careers" className="text-indigo-600 hover:underline">
-            /careers
-          </Link>
-          .
-        </p>
-      )}
-
-      {candidates.length > 0 && (
-        <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3">Candidate</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Resume score</th>
-                <th className="px-4 py-3">Interview score</th>
-                <th className="px-4 py-3">Recommendation</th>
-                <th className="px-4 py-3">Applied</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {candidates.map((c) => (
-                <tr
-                  key={c.applicationId}
-                  className="border-b border-slate-100 hover:bg-slate-50/50"
-                >
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-900">{c.candidateName}</p>
-                    <p className="text-xs text-slate-500">{c.email}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">{c.jobTitle}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize text-slate-600">
-                      {c.status.replace(/_/g, " ")}
-                    </span>
-                  </td>
-                  <td className={`px-4 py-3 font-semibold ${scoreClass(c.resumeMatchScore)}`}>
-                    {c.resumeMatchScore != null ? `${c.resumeMatchScore}/100` : "—"}
-                  </td>
-                  <td className={`px-4 py-3 font-semibold ${scoreClass(c.interviewScore)}`}>
-                    {c.interviewScore != null ? `${c.interviewScore}/100` : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {c.recommendation ? (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${recBadge(c.recommendation)}`}
-                      >
-                        {c.recommendation}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {new Date(c.appliedAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      {c.resumeMatchScore == null && (
-                        <button
-                          type="button"
-                          disabled={scoringId === c.applicationId}
-                          onClick={() => void scoreResume(c.applicationId)}
-                          className="text-left text-xs font-semibold text-emerald-700 hover:underline disabled:opacity-60"
-                        >
-                          {scoringId === c.applicationId
-                            ? "Scoring…"
-                            : "Score resume →"}
-                        </button>
-                      )}
-                      {c.interviewScore != null && (
-                        <Link
-                          href={`/dashboard/interviews/${c.applicationId}`}
-                          className="text-xs font-semibold text-emerald-700 hover:underline"
-                        >
-                          Listen to interview →
-                        </Link>
-                      )}
-                      {c.status !== "interview_completed" && (
-                        <Link
-                          href={`/call/${c.applicationId}`}
-                          className="text-xs font-semibold text-indigo-600 hover:underline"
-                        >
-                          Send AI call →
-                        </Link>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="mt-10">
+        <RecruiterDecisionFlow />
+      </div>
     </div>
   );
 }

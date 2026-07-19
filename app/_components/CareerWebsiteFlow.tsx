@@ -1,22 +1,29 @@
 export const CAREER_WEBSITE_FLOW_STEPS = [
-  "Candidate Applies",
+  "Apply for a Job",
   "Upload Resume",
   "Supabase Storage",
+  "Database Record",
   "n8n Trigger",
-  "AI Resume Parser",
-  "Save to Supabase",
+  "AI Resume Parsing",
+  "Save Structured Data",
   "Match Job Description",
-  "Score Candidate",
-  "Rank Candidates",
-  "Email Recruiter",
-  "Schedule Interview",
-  "Google Calendar",
-  "Reminder",
+  "Candidate Score",
+  "Candidate Ranking",
+  "Notify Recruiter",
 ] as const;
 
 export type CareerWebsiteFlowStep = (typeof CAREER_WEBSITE_FLOW_STEPS)[number];
 
-const PARSER_FIELDS = ["Name", "Skills", "Experience", "Education", "Certificates"] as const;
+const PARSER_FIELDS = [
+  "Name",
+  "Email",
+  "Phone",
+  "Skills",
+  "Experience",
+  "Education",
+  "Certificates",
+  "Resume Summary",
+] as const;
 
 type CareerWebsiteFlowProps = {
   activeStep?: CareerWebsiteFlowStep;
@@ -27,21 +34,28 @@ function stepIndex(step: CareerWebsiteFlowStep | undefined) {
   return CAREER_WEBSITE_FLOW_STEPS.indexOf(step);
 }
 
-/** Vertical Career Website automation flow (apply → parse → rank → calendar). */
+/** Public Career Website flow for applicants (apply → parse → score → notify). */
 export function CareerWebsiteFlow({ activeStep }: CareerWebsiteFlowProps) {
   const activeIdx = stepIndex(activeStep);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/80 p-6 shadow-sm">
-      <h2 className="text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
-        Career Website
-      </h2>
+    <section className="rounded-2xl border border-indigo-200 bg-gradient-to-b from-indigo-50/40 to-white p-6 shadow-sm">
+      <div className="text-center">
+        <span className="inline-flex rounded-full border border-indigo-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-600">
+          Public
+        </span>
+        <h2 className="mt-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          Career Website
+        </h2>
+        <p className="mt-1 text-xs text-slate-500">Applicants / Candidates</p>
+      </div>
 
       <ol className="mx-auto mt-6 max-w-md space-y-0">
         {CAREER_WEBSITE_FLOW_STEPS.map((step, i) => {
           const isActive = activeStep === step;
           const isPast = activeIdx > i;
-          const isParser = step === "AI Resume Parser";
+          const isParser = step === "AI Resume Parsing";
+          const isTrigger = step === "n8n Trigger";
 
           return (
             <li key={step} className="flex gap-3">
@@ -81,6 +95,17 @@ export function CareerWebsiteFlow({ activeStep }: CareerWebsiteFlowProps) {
                 >
                   {step}
                 </div>
+
+                {isTrigger && (
+                  <div className="mt-2 ml-1 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-indigo-100 bg-white px-2.5 py-2 text-xs font-medium text-indigo-800">
+                      AI Resume Parsing
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-600">
+                      Send Confirmation Email
+                    </div>
+                  </div>
+                )}
 
                 {isParser && (
                   <ul className="mt-2 ml-3 space-y-1 border-l border-indigo-200 pl-3">

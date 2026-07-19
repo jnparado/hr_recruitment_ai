@@ -2,9 +2,10 @@ import {
   FlowDiagram,
   RECRUITER_FLOW_STEPS,
 } from "@/app/_components/FlowDiagram";
+import { RecruiterDecisionFlow } from "@/app/_components/RecruiterDecisionFlow";
 import type { PipelineStage } from "@/lib/types";
 
-/** AI-highlighted stages match the mint pills in the Recruiter Tools diagram */
+/** AI-highlighted stages for the batch pipeline tool */
 export const RECRUITER_HIGHLIGHT_STEPS = [
   "AI Extracts",
   "Ranks Candidates",
@@ -27,12 +28,11 @@ export function pipelineStageToStep(
 }
 
 type RecruiterFlowDiagramProps = {
-  /** Current step label from RECRUITER_FLOW_STEPS */
   activeStep?: string;
   variant?: "default" | "compact" | "minimal";
 };
 
-/** Recruiter-only tools flow — Resume Received → … → Recruiter Report */
+/** Batch pipeline tool flow (used on /pipeline). */
 export function RecruiterFlowDiagram({
   activeStep,
   variant = "default",
@@ -48,3 +48,5 @@ export function RecruiterFlowDiagram({
     />
   );
 }
+
+export { RecruiterDecisionFlow };
