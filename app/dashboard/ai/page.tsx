@@ -43,8 +43,8 @@ const AI_FEATURES = [
   },
   {
     title: "AI Interview Room",
-    body: "Invite candidates to a secure first-stage AI interview; reports land here.",
-    href: "/dashboard/applicants",
+    body: "Invite by secure email link; AI conducts the interview and emails a report to the recruiter.",
+    href: "/dashboard/ai-interview",
   },
 ] as const;
 

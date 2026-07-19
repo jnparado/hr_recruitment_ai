@@ -7,6 +7,7 @@ export const RECRUITER_MODULES = [
   { href: "/dashboard", label: "Dashboard", match: (p: string) => p === "/dashboard" },
   { href: "/dashboard/jobs", label: "Job Management" },
   { href: "/dashboard/applicants", label: "Candidates" },
+  { href: "/dashboard/ai-interview", label: "AI Interview Room" },
   { href: "/dashboard/ai", label: "AI Features" },
   { href: "/dashboard/schedule", label: "Interviews" },
   { href: "/dashboard/email", label: "Email Center" },

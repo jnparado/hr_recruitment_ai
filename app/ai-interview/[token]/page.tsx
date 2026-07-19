@@ -15,6 +15,10 @@ type InviteInfo = {
   error?: string;
 };
 
+/**
+ * Interview Invitation Page — opened from the secure email link:
+ * /ai-interview/[token]
+ */
 export default function AiInterviewInvitePage() {
   const params = useParams();
   const router = useRouter();
@@ -69,6 +73,10 @@ export default function AiInterviewInvitePage() {
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-bold text-slate-900">Interview unavailable</h1>
         <p className="mt-2 text-sm text-rose-700">{error}</p>
+        <p className="mt-2 text-sm text-slate-500">
+          This secure link may be invalid, expired, or already used. Contact the recruiter for a
+          new invitation email.
+        </p>
         <Link href="/careers" className="mt-6 inline-block text-sm font-semibold text-indigo-700">
           ← Back to careers
         </Link>
@@ -86,28 +94,39 @@ export default function AiInterviewInvitePage() {
   return (
     <div className="mx-auto max-w-lg px-4 py-10 sm:px-6">
       <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
-        AI Interview Room
+        Secure invitation
       </p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-        Interview invitation
+        AI Interview Room
       </h1>
       <p className="mt-2 text-sm text-slate-600">
-        Secure link for the invited candidate only. Do not share this URL.
+        You received this link by email. It is personal — do not forward it. The AI will conduct
+        your first-stage interview, evaluate your answers, and send a report to the recruiter.
       </p>
 
       <div className="mt-8 space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <Row label="Job title" value={info?.jobTitle || "—"} />
         <Row label="Company" value={info?.companyName || "—"} />
-        <Row label="Role" value={info?.jobTitle || "—"} />
-        <Row label="Duration" value={`About ${info?.durationMinutes ?? 30} minutes`} />
-        <Row label="Deadline" value={deadlineLabel} />
-        <Row label="Invited as" value={info?.candidateEmailHint || "—"} />
+        <Row label="Expected duration" value={`About ${info?.durationMinutes ?? 30} minutes`} />
+        <Row label="Interview deadline" value={deadlineLabel} />
+        <Row label="Invited email" value={info?.candidateEmailHint || "—"} />
         <Row label="Required" value="Camera and microphone" />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-indigo-950">
+        <p className="font-semibold">Before you start</p>
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-indigo-900/90">
+          <li>Find a quiet place with stable internet</li>
+          <li>Allow camera and microphone when prompted</li>
+          <li>Answer clearly — you can repeat a question anytime</li>
+          <li>Link expires after the deadline and only works for you</li>
+        </ul>
       </div>
 
       {!info?.usable && (
         <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
           {info?.expired
-            ? "This interview link has expired. Contact the recruiter for a new invitation."
+            ? "This interview link has expired. Ask the recruiter to email a new secure invitation."
             : "This interview link is no longer valid."}
         </div>
       )}
@@ -122,10 +141,10 @@ export default function AiInterviewInvitePage() {
               className="mt-1"
             />
             <span>
-              I consent to this AI interview being recorded for evaluation. Recordings and
-              transcripts are shared only with the hiring team. AI does not make final hiring
-              decisions based on appearance, accent, age, gender, disability, or other protected
-              characteristics.
+              <strong className="font-semibold text-slate-900">Privacy & recording consent.</strong>{" "}
+              I agree this AI interview may be recorded for evaluation. Transcripts and scores are
+              shared only with the hiring team. AI does not make final hiring decisions from
+              appearance, accent, age, gender, disability, or other protected characteristics.
             </span>
           </label>
 

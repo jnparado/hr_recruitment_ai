@@ -5,7 +5,9 @@ import {
   createAiInterviewInvite,
 } from "@/lib/ai-interview-invites";
 import { getApplication } from "@/lib/db";
+import { triggerN8nEmail } from "@/lib/n8n";
 
+/** Recruiter invites candidate to AI Interview Room via secure email link. */
 export async function POST(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
@@ -42,10 +44,15 @@ export async function POST(
       deadline: invite.deadline,
     });
 
-    console.info("[ai-interview] invite created", {
-      applicationId: id,
-      token: invite.token.slice(0, 8) + "…",
-      to: email.to,
+    const delivery = await triggerN8nEmail({
+      event: "ai_interview.invite",
+      email,
+      meta: {
+        applicationId: id,
+        inviteId: invite.id,
+        interviewUrl,
+        deadline: invite.deadline,
+      },
     });
 
     return Response.json({
@@ -56,6 +63,10 @@ export async function POST(
       interviewUrl,
       deadline: invite.deadline,
       email,
+      emailSent: delivery.sent,
+      emailNote: delivery.sent
+        ? `Invitation email sent to ${email.to}`
+        : `Invitation created. Secure link ready — ${delivery.error || "email queued locally"}.`,
     });
   } catch (err) {
     return Response.json(

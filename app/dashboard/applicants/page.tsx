@@ -120,9 +120,19 @@ export default function ApplicantsPage() {
       );
       if (d.interviewUrl) {
         await navigator.clipboard.writeText(d.interviewUrl).catch(() => null);
-        setError(null);
         alert(
-          `AI Interview invite created.\n\nLink (copied if allowed):\n${d.interviewUrl}\n\nEmail queued for ${d.email?.to || "candidate"}.`
+          [
+            d.emailNote || "AI Interview invitation created.",
+            "",
+            `Secure link:`,
+            d.interviewUrl,
+            "",
+            d.emailSent
+              ? `Email sent to ${d.email?.to || "candidate"}.`
+              : `Email payload ready for ${d.email?.to || "candidate"} (configure N8N_WEBHOOK_URL to deliver).`,
+            "",
+            "Link copied to clipboard when allowed.",
+          ].join("\n")
         );
       }
     } catch (err) {

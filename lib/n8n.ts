@@ -101,6 +101,54 @@ export function googleCalendarPayload(input: {
   };
 }
 
+/**
+ * Send any email payload through n8n (interview invites, reports, etc.).
+ * Configure N8N_WEBHOOK_URL to forward `event` + `email` to your mail node.
+ */
+export async function triggerN8nEmail(input: {
+  event: string;
+  email: { to: string; subject: string; body: string };
+  meta?: Record<string, unknown>;
+}): Promise<{ sent: boolean; error?: string }> {
+  const url = process.env.N8N_WEBHOOK_URL;
+  if (!url) {
+    console.info("[n8n-email] queued (no webhook)", {
+      event: input.event,
+      to: input.email.to,
+      subject: input.email.subject,
+    });
+    return { sent: false, error: "N8N_WEBHOOK_URL not configured — email logged only" };
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.N8N_WEBHOOK_SECRET
+          ? { "X-Webhook-Secret": process.env.N8N_WEBHOOK_SECRET }
+          : {}),
+      },
+      body: JSON.stringify({
+        event: input.event,
+        timestamp: new Date().toISOString(),
+        email: input.email,
+        ...input.meta,
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      return { sent: false, error: `n8n returned ${res.status}: ${detail}` };
+    }
+    return { sent: true };
+  } catch (err) {
+    return {
+      sent: false,
+      error: err instanceof Error ? err.message : "n8n email trigger failed",
+    };
+  }
+}
+
 function to24h(time: string): string {
   const match = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
   if (!match) return "09:00:00";

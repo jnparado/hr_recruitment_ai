@@ -122,6 +122,60 @@ export function aiInterviewInviteEmail(input: {
   };
 }
 
+export async function listAiInterviewInvites(): Promise<DbAiInterviewInvite[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("ai_interview_invites")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DbAiInterviewInvite[];
+}
+
+export async function markAiInterviewInviteCompletedByApplication(
+  applicationId: string
+): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from("ai_interview_invites")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("application_id", applicationId)
+    .neq("status", "revoked");
+  if (error && !/ai_interview_invites/i.test(error.message)) {
+    throw new Error(error.message);
+  }
+}
+
+export function recruiterInterviewReportEmail(input: {
+  candidateName: string;
+  candidateEmail: string;
+  jobTitle: string;
+  applicationId: string;
+  overallScore: number;
+  recommendation: string;
+  dashboardUrl: string;
+}) {
+  return {
+    to: process.env.RECRUITER_EMAIL || "recruiter@company.com",
+    subject: `AI Interview report — ${input.candidateName} (${input.overallScore}/100)`,
+    body: [
+      `AI Interview Room report is ready.`,
+      ``,
+      `Candidate: ${input.candidateName} (${input.candidateEmail})`,
+      `Role: ${input.jobTitle}`,
+      `Score: ${input.overallScore}/100`,
+      `Recommendation: ${input.recommendation}`,
+      ``,
+      `Open in Recruiter Admin:`,
+      input.dashboardUrl,
+      ``,
+      `Application ID: ${input.applicationId}`,
+    ].join("\n"),
+  };
+}
+
 export function publicInvitePayload(invite: DbAiInterviewInvite) {
   return {
     token: invite.token,
@@ -136,7 +190,6 @@ export function publicInvitePayload(invite: DbAiInterviewInvite) {
     devicesOkAt: invite.devices_ok_at,
     identityOkAt: invite.identity_ok_at,
     verifiedAt: invite.verified_at,
-    // Masked for display only — full match checked server-side on verify
     candidateEmailHint: maskEmail(invite.candidate_email),
     candidateNameHint: invite.candidate_name.split(" ")[0] || "Candidate",
   };
