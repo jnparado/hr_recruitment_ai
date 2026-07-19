@@ -84,7 +84,7 @@ export default function ApplicantsPage() {
   const [scheduleTime, setScheduleTime] = useState("10:00 AM");
   const [query, setQuery] = useState("");
   const [jobFilter, setJobFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
 
   async function load() {
     setLoading(true);
@@ -113,8 +113,17 @@ export default function ApplicantsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return candidates.filter((c) => {
+      if (statusFilter === "active" && c.status === "rejected") return false;
+      if (statusFilter === "rejected" && c.status !== "rejected") return false;
+      if (
+        statusFilter !== "all" &&
+        statusFilter !== "active" &&
+        statusFilter !== "rejected" &&
+        c.status !== statusFilter
+      ) {
+        return false;
+      }
       if (jobFilter !== "all" && c.jobTitle !== jobFilter) return false;
-      if (statusFilter !== "all" && c.status !== statusFilter) return false;
       if (!q) return true;
       const hay = [c.candidateName, c.email, c.jobTitle, c.currentRole, ...(c.skills || [])]
         .join(" ")
@@ -124,11 +133,13 @@ export default function ApplicantsPage() {
   }, [candidates, jobFilter, statusFilter, query]);
 
   const stats = useMemo(() => {
+    const active = candidates.filter((c) => c.status !== "rejected");
     return {
-      total: candidates.length,
-      scored: candidates.filter((c) => c.resumeMatchScore != null).length,
-      shortlisted: candidates.filter((c) => c.status === "shortlisted").length,
-      interviewed: candidates.filter((c) => c.interviewScore != null).length,
+      total: active.length,
+      scored: active.filter((c) => c.resumeMatchScore != null).length,
+      shortlisted: active.filter((c) => c.status === "shortlisted").length,
+      interviewed: active.filter((c) => c.interviewScore != null).length,
+      rejected: candidates.filter((c) => c.status === "rejected").length,
     };
   }, [candidates]);
 
@@ -251,12 +262,13 @@ export default function ApplicantsPage() {
         </button>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: "Applicants", value: stats.total },
+          { label: "Active", value: stats.total },
           { label: "AI scored", value: stats.scored },
           { label: "Interviewed", value: stats.interviewed },
           { label: "Shortlisted", value: stats.shortlisted },
+          { label: "Rejected", value: stats.rejected },
         ].map((s) => (
           <div
             key={s.label}
@@ -302,12 +314,16 @@ export default function ApplicantsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
           >
+            <option value="active">Active (hide rejected)</option>
+            <option value="rejected">Rejected only</option>
             <option value="all">All statuses</option>
-            {[...new Set(candidates.map((c) => c.status))].map((s) => (
-              <option key={s} value={s}>
-                {s.replace(/_/g, " ")}
-              </option>
-            ))}
+            {[...new Set(candidates.map((c) => c.status))]
+              .filter((s) => s !== "rejected")
+              .map((s) => (
+                <option key={s} value={s}>
+                  {s.replace(/_/g, " ")}
+                </option>
+              ))}
           </select>
         </div>
       </div>

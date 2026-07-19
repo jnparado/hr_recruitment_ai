@@ -70,6 +70,7 @@ export default function RankingPage() {
   const ranked = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = candidates.filter((c) => {
+      if (c.status === "rejected") return false;
       if (jobFilter !== "all" && c.jobTitle !== jobFilter) return false;
       if (!q) return true;
       const hay = [c.candidateName, c.email, c.jobTitle, c.currentRole, ...(c.skills || [])]
