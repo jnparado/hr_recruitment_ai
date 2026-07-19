@@ -69,12 +69,13 @@ export async function POST(
         : `Invitation created. Secure link ready — ${delivery.error || "email queued locally"}.`,
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to create AI interview invite.";
+    const missingTable = /ai_interview_invites|schema cache/i.test(message);
     return Response.json(
       {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Failed to create AI interview invite. Run the ai_interview_invites migration.",
+        error: missingTable
+          ? "Database table ai_interview_invites is missing. In Supabase → SQL Editor, run supabase/migrations/20260719000000_ai_interview_and_jobs.sql (or npm run db:setup with SUPABASE_DB_PASSWORD)."
+          : message,
       },
       { status: 502 }
     );

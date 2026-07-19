@@ -9,7 +9,6 @@ export const RECRUITER_MODULES = [
   { href: "/dashboard/applicants", label: "Candidates" },
   { href: "/dashboard/ai-interview", label: "AI Interview Room" },
   { href: "/dashboard/ai", label: "AI Features" },
-  { href: "/dashboard/schedule", label: "Interviews" },
   { href: "/dashboard/email", label: "Email Center" },
   { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/dashboard/settings", label: "Settings" },

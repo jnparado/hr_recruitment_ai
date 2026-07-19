@@ -66,8 +66,13 @@ Alternatively, paste supabase/schema.sql, supabase/policies.sql, and supabase/st
 
 const schemaPath = resolve(root, "supabase/schema.sql");
 const policiesPath = resolve(root, "supabase/policies.sql");
+const migrationPath = resolve(
+  root,
+  "supabase/migrations/20260719000000_ai_interview_and_jobs.sql"
+);
 const schemaSql = readFileSync(schemaPath, "utf8");
 const policiesSql = existsSync(policiesPath) ? readFileSync(policiesPath, "utf8") : "";
+const migrationSql = existsSync(migrationPath) ? readFileSync(migrationPath, "utf8") : "";
 
 const client = new pg.Client({
   connectionString,
@@ -78,6 +83,11 @@ try {
   await client.connect();
   await client.query(schemaSql);
   console.log("✓ Supabase tables created successfully.");
+
+  if (migrationSql) {
+    await client.query(migrationSql);
+    console.log("✓ AI interview / jobs migration applied.");
+  }
 
   if (policiesSql) {
     await client.query(policiesSql);

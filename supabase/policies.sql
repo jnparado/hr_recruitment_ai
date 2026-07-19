@@ -164,6 +164,26 @@ create policy "voice_interviews_authenticated_delete"
 
 -- anon: no access (transcripts & scores are sensitive)
 
+-- ─── ai_interview_invites ───────────────────────────────────────────────────
+alter table public.ai_interview_invites enable row level security;
+
+drop policy if exists "ai_interview_invites_authenticated_read" on public.ai_interview_invites;
+create policy "ai_interview_invites_authenticated_read"
+  on public.ai_interview_invites
+  for select
+  to authenticated
+  using (true);
+
+drop policy if exists "ai_interview_invites_authenticated_manage" on public.ai_interview_invites;
+create policy "ai_interview_invites_authenticated_manage"
+  on public.ai_interview_invites
+  for all
+  to authenticated
+  using (true)
+  with check (true);
+
+-- anon: no direct table access (candidates use Next.js API + service role)
+
 -- ─── storage: upload_resume ─────────────────────────────────────────────────
 -- Resumes are uploaded server-side with the service role (bypasses RLS).
 -- Public read matches getPublicUrl() on the careers flow.
