@@ -89,6 +89,15 @@ try {
     console.log("✓ AI interview / jobs migration applied.");
   }
 
+  const candidatesMigrationPath = resolve(
+    root,
+    "supabase/migrations/20260719010000_candidates_columns.sql"
+  );
+  if (existsSync(candidatesMigrationPath)) {
+    await client.query(readFileSync(candidatesMigrationPath, "utf8"));
+    console.log("✓ Candidates columns migration applied.");
+  }
+
   if (policiesSql) {
     await client.query(policiesSql);
     console.log("✓ RLS policies applied.");

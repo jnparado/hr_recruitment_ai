@@ -38,7 +38,7 @@ create table if not exists candidates (
   name text not null,
   email text not null default '',
   phone text not null default '',
-  current_role text not null default '',
+  "current_role" text not null default '',
   years_of_experience integer not null default 0,
   skills jsonb not null default '[]',
   experience jsonb not null default '[]',

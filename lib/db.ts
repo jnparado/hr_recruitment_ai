@@ -151,7 +151,11 @@ export async function createApplication(input: {
 
   const app = data as DbApplication;
   // Stub candidate row immediately; AI parsing enriches it later.
-  await ensureCandidateStub(app);
+  try {
+    await ensureCandidateStub(app);
+  } catch (err) {
+    console.warn("[db] ensureCandidateStub failed (application still saved):", err);
+  }
   return app;
 }
 
@@ -168,7 +172,8 @@ export async function ensureCandidateStub(application: {
     .maybeSingle();
   if (existing) return;
 
-  const { error } = await supabaseAdmin().from("candidates").insert({
+  // Prefer full schema; fall back to name/email only if columns are missing.
+  const full = await supabaseAdmin().from("candidates").insert({
     application_id: application.id,
     name: application.applicant_name,
     email: application.applicant_email,
@@ -180,9 +185,25 @@ export async function ensureCandidateStub(application: {
     education: [],
     certificates: [],
   });
-  if (error && !/duplicate|unique/i.test(error.message)) {
-    throw new Error(error.message);
+
+  if (!full.error) return;
+  if (/duplicate|unique/i.test(full.error.message)) return;
+
+  if (/current_role|schema cache|column/i.test(full.error.message)) {
+    const minimal = await supabaseAdmin().from("candidates").insert({
+      application_id: application.id,
+      name: application.applicant_name,
+      email: application.applicant_email,
+    });
+    if (minimal.error && !/duplicate|unique/i.test(minimal.error.message)) {
+      throw new Error(
+        `${minimal.error.message} — run supabase/migrations/20260719010000_candidates_columns.sql in Supabase SQL Editor.`
+      );
+    }
+    return;
   }
+
+  throw new Error(full.error.message);
 }
 
 /** Backfill stubs for applications that never got a candidates row (parse failed / old applies). */
@@ -222,7 +243,7 @@ export async function saveParsedCandidate(
   applicationId: string,
   parsed: ParsedCandidate
 ): Promise<void> {
-  const { error: candError } = await supabaseAdmin().from("candidates").upsert(
+  const full = await supabaseAdmin().from("candidates").upsert(
     {
       application_id: applicationId,
       name: parsed.name,
@@ -238,7 +259,30 @@ export async function saveParsedCandidate(
     },
     { onConflict: "application_id" }
   );
-  if (candError) throw new Error(candError.message);
+
+  if (!full.error) return;
+
+  if (/current_role|schema cache|column/i.test(full.error.message)) {
+    const minimal = await supabaseAdmin().from("candidates").upsert(
+      {
+        application_id: applicationId,
+        name: parsed.name || "Candidate",
+        email: parsed.email || "",
+      },
+      { onConflict: "application_id" }
+    );
+    if (minimal.error) {
+      throw new Error(
+        `${full.error.message} — run supabase/migrations/20260719010000_candidates_columns.sql in Supabase SQL Editor.`
+      );
+    }
+    console.warn(
+      "[db] candidates table missing columns; saved name/email only. Run candidates columns migration."
+    );
+    return;
+  }
+
+  throw new Error(full.error.message);
 }
 
 export async function updateApplicationStatus(
