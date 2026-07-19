@@ -2,8 +2,9 @@ import {
   CANDIDATE_FLOW_STEPS,
   FlowDiagram,
 } from "@/app/_components/FlowDiagram";
+import { CareerWebsiteFlow } from "@/app/_components/CareerWebsiteFlow";
 
-/** Highlighted stages match the light-blue pills in the Candidate Application Flow diagram */
+/** Highlighted stages for the voice screening flow */
 export const CANDIDATE_HIGHLIGHT_STEPS = [
   "Voice Interview",
   "Speech to Text",
@@ -11,12 +12,11 @@ export const CANDIDATE_HIGHLIGHT_STEPS = [
 ] as const;
 
 type CandidateFlowDiagramProps = {
-  /** Current step label from CANDIDATE_FLOW_STEPS */
   activeStep?: string;
   variant?: "default" | "compact" | "minimal";
 };
 
-/** Candidate-only application flow — Applies → … → Recruiter Dashboard */
+/** Voice screening flow — Applies → AI call → Score → Recruiter Dashboard */
 export function CandidateFlowDiagram({
   activeStep,
   variant = "default",
@@ -33,7 +33,9 @@ export function CandidateFlowDiagram({
   );
 }
 
-/** @deprecated Use CandidateFlowDiagram */
+/** @deprecated Prefer CareerWebsiteFlow on /careers */
 export function CareerFlowDiagram(props: CandidateFlowDiagramProps) {
   return <CandidateFlowDiagram {...props} />;
 }
+
+export { CareerWebsiteFlow };

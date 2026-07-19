@@ -1,9 +1,9 @@
 import { after } from "next/server";
 import { createApplication } from "@/lib/db";
 import { appOriginFromRequest } from "@/lib/app-url";
+import { runCareerWebsitePipeline } from "@/lib/career-pipeline";
 import { triggerN8nApplication } from "@/lib/n8n";
 import { resolveJob } from "@/lib/jobs";
-import { scoreApplication } from "@/lib/score-application";
 import { uploadResume } from "@/lib/storage";
 
 export const maxDuration = 60;
@@ -71,15 +71,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Score resume vs job in the background so the dashboard gets a resume score
-  after(async () => {
-    try {
-      await scoreApplication(applicationId);
-    } catch (err) {
-      console.error("[apply] resume scoring failed:", err);
-    }
-  });
-
   const n8n = await triggerN8nApplication({
     applicationId,
     jobId: job.id,
@@ -88,6 +79,15 @@ export async function POST(request: Request) {
     applicantEmail,
     resumeUrl: storedResume.storageUrl,
     resumePath: storedResume.storagePath,
+  });
+
+  // Career Website pipeline: parse → score → rank → email/schedule payloads
+  after(async () => {
+    try {
+      await runCareerWebsitePipeline(applicationId);
+    } catch (err) {
+      console.error("[apply] career website pipeline failed:", err);
+    }
   });
 
   const origin = appOriginFromRequest(request);
@@ -100,6 +100,7 @@ export async function POST(request: Request) {
     voiceInterviewAbsoluteUrl: `${origin}/call/${applicationId}`,
     n8nTriggered: n8n.triggered,
     n8nError: n8n.error,
-    message: "Application received! Start your AI voice screening interview below.",
+    message:
+      "Application received! Your resume is being parsed, scored, and ranked. Start your AI voice screening below.",
   });
 }

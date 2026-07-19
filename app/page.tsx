@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CandidateFlowDiagram } from "@/app/_components/CareerFlowDiagram";
+import { CareerWebsiteFlow } from "@/app/_components/CareerWebsiteFlow";
 import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
 import { getRecruiter } from "@/lib/auth";
 
@@ -111,6 +112,7 @@ export default async function Home() {
       </section>
 
       <section className="mt-14 space-y-6">
+        <CareerWebsiteFlow />
         <CandidateFlowDiagram />
         <RecruiterFlowDiagram />
       </section>
