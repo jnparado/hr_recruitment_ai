@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { RecruiterDecisionFlow } from "@/app/_components/RecruiterDecisionFlow";
 import type { DashboardCandidate } from "@/lib/types";
 
 function scoreClass(score: number | null) {
@@ -24,9 +23,6 @@ export default function ApplicantsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [flowStep, setFlowStep] = useState<
-    "Select Candidate" | "Shortlist" | "Reject" | "Schedule Interview" | "Google Calendar" | "Email Candidate" | "Reminder"
-  >("Select Candidate");
   const [scheduleFor, setScheduleFor] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("10:00 AM");
@@ -66,10 +62,7 @@ export default function ApplicantsPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Action failed.");
 
-      if (action === "shortlist") setFlowStep("Shortlist");
-      if (action === "reject") setFlowStep("Reject");
       if (action === "schedule") {
-        setFlowStep("Reminder");
         setScheduleFor(null);
       }
 
@@ -158,10 +151,6 @@ export default function ApplicantsPage() {
         >
           Refresh
         </button>
-      </div>
-
-      <div className="mt-6">
-        <RecruiterDecisionFlow activeStep={flowStep} />
       </div>
 
       {error && (
@@ -275,7 +264,6 @@ export default function ApplicantsPage() {
                           type="button"
                           onClick={() => {
                             setScheduleFor(c.applicationId);
-                            setFlowStep("Schedule Interview");
                             const d = new Date();
                             d.setDate(d.getDate() + 2);
                             setScheduleDate(d.toISOString().slice(0, 10));

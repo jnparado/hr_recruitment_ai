@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
 import { BrowserSpeechRecognizer, prefetchSpeechVoices, speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
 import type { ChatMessage, InterviewEvaluation, InterviewSetup } from "@/lib/types";
 
@@ -188,13 +187,6 @@ function InterviewContent() {
         skills, salary expectations, and availability — then scores the candidate
         with a hire recommendation.
       </p>
-
-      <div className="mt-6">
-        <RecruiterFlowDiagram
-          activeStep={phase === "report" ? "Recruiter Report" : "Schedules Interviews"}
-          variant="compact"
-        />
-      </div>
 
       {error && (
         <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">

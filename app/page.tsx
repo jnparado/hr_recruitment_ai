@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { RecruitmentFlow } from "@/app/_components/RecruitmentFlow";
 import { getRecruiter } from "@/lib/auth";
 
 export default async function Home() {
@@ -52,10 +51,6 @@ export default async function Home() {
             {recruiter ? "Open Recruiter Admin →" : "Recruiter login →"}
           </Link>
         </div>
-      </section>
-
-      <section className="mt-14">
-        <RecruitmentFlow />
       </section>
     </div>
   );

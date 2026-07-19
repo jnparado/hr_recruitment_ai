@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { RecruitmentFlow } from "@/app/_components/RecruitmentFlow";
 import { listDashboardCandidates, listAllJobs, listScheduledInterviews } from "@/lib/db";
 
 export default async function DashboardHomePage() {
@@ -124,10 +123,6 @@ export default async function DashboardHomePage() {
             </Link>
           </div>
         </section>
-      </div>
-
-      <div className="mt-10">
-        <RecruitmentFlow />
       </div>
     </div>
   );

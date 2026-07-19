@@ -2,10 +2,6 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import {
-  RecruiterFlowDiagram,
-  pipelineStageToStep,
-} from "@/app/_components/RecruiterFlowDiagram";
 import { StorageLink } from "@/app/_components/StorageLink";
 import type {
   ExtractedResume,
@@ -14,6 +10,15 @@ import type {
   RankedCandidate,
   RecruiterReport,
 } from "@/lib/types";
+
+const STAGE_LABEL: Record<PipelineStage, string> = {
+  received: "Resume Received",
+  extracting: "AI Extracts",
+  matching: "Matches Jobs",
+  ranking: "Ranks Candidates",
+  scheduling: "Schedules Interviews",
+  report: "Recruiter Report",
+};
 
 function scoreColor(score: number) {
   if (score >= 85) return "text-emerald-600";
@@ -360,12 +365,6 @@ export default function PipelinePage() {
         match to jobs, rank candidates, schedule interviews, and generate a recruiter report.
       </p>
 
-      <div className="mt-8">
-        <RecruiterFlowDiagram
-          activeStep={pipelineStageToStep(result && !loading ? "report" : stage)}
-        />
-      </div>
-
       {/* Input */}
       {!result && (
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -452,7 +451,7 @@ export default function PipelinePage() {
         <div className="mt-10 flex flex-col items-center gap-3 text-slate-500">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
           <p className="text-sm">
-            {pipelineStageToStep(stage)}…
+            {STAGE_LABEL[stage]}…
           </p>
         </div>
       )}

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { RecruiterFlowDiagram } from "@/app/_components/RecruiterFlowDiagram";
 import { speakInBrowser, stopBrowserSpeech } from "@/lib/browser-voice";
 import type { ChatMessage, InterviewEvaluation } from "@/lib/types";
 
@@ -155,10 +154,6 @@ export default function InterviewListenPage() {
       <p className="mt-2 text-slate-600">
         Listen to the AI screening conversation and review scores for this candidate.
       </p>
-
-      <div className="mt-6">
-        <RecruiterFlowDiagram activeStep="Schedules Interviews" variant="compact" />
-      </div>
 
       {loading && (
         <p className="mt-8 text-sm text-slate-500">Loading interview…</p>

@@ -77,21 +77,10 @@ export function SiteHeader({ isRecruiter }: SiteHeaderProps) {
         </Link>
 
         <nav className="flex items-center gap-1 text-sm font-medium text-slate-600">
-          <span className="hidden px-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-600 sm:inline">
-            Public
-          </span>
-          <Link
-            href="/careers"
-            className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            Career Website
-          </Link>
-
           {isRecruiter ? (
             <>
-              <span className="mx-1 hidden h-4 w-px bg-slate-200 sm:block" aria-hidden />
               <span className="hidden px-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 sm:inline">
-                Recruiter
+                Recruiter Admin
               </span>
               <Link
                 href="/dashboard"
@@ -109,12 +98,23 @@ export function SiteHeader({ isRecruiter }: SiteHeaderProps) {
               </form>
             </>
           ) : (
-            <Link
-              href="/login"
-              className="ml-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800 transition hover:bg-emerald-100"
-            >
-              Recruiter login
-            </Link>
+            <>
+              <span className="hidden px-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-600 sm:inline">
+                Public
+              </span>
+              <Link
+                href="/careers"
+                className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                Career Website
+              </Link>
+              <Link
+                href="/login"
+                className="ml-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800 transition hover:bg-emerald-100"
+              >
+                Recruiter login
+              </Link>
+            </>
           )}
         </nav>
       </div>
