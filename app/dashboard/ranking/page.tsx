@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { scoreAllUnscored } from "@/app/dashboard/_lib/score-unscored";
 import type { DashboardCandidate } from "@/lib/types";
 
 function scoreTone(score: number | null) {
@@ -26,14 +27,22 @@ function compositeScore(c: DashboardCandidate) {
   return c.resumeMatchScore ?? c.interviewScore ?? null;
 }
 
-function ScoreMeter({ label, score }: { label: string; score: number | null }) {
+function ScoreMeter({
+  label,
+  score,
+  emptyLabel = "—",
+}: {
+  label: string;
+  score: number | null;
+  emptyLabel?: string;
+}) {
   const tone = scoreTone(score);
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
         <span className="text-slate-500">{label}</span>
         <span className={`font-semibold ${tone.text}`}>
-          {score != null ? `${score}/100` : "—"}
+          {score != null ? `${score}/100` : emptyLabel}
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -49,18 +58,66 @@ function ScoreMeter({ label, score }: { label: string; score: number | null }) {
 export default function RankingPage() {
   const [candidates, setCandidates] = useState<DashboardCandidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scoring, setScoring] = useState(false);
+  const [scoreNote, setScoreNote] = useState<string | null>(null);
+  const [scoreError, setScoreError] = useState<string | null>(null);
   const [jobFilter, setJobFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"composite" | "resume" | "interview">("composite");
+  const autoScoreStarted = useRef(false);
+
+  const load = useCallback(async () => {
+    const r = await fetch("/api/dashboard");
+    const d = await r.json();
+    setCandidates((d.candidates ?? []) as DashboardCandidate[]);
+    return (d.candidates ?? []) as DashboardCandidate[];
+  }, []);
+
+  const runScoring = useCallback(async () => {
+    setScoring(true);
+    setScoreError(null);
+    setScoreNote("Scoring unscored resumes with AI…");
+    try {
+      const { totalScored, last } = await scoreAllUnscored(async () => {
+        await load();
+      });
+      await load();
+      if (totalScored > 0) {
+        setScoreNote(`Scored ${totalScored} resume${totalScored === 1 ? "" : "s"}.`);
+      } else if ((last.attempted ?? 0) > 0) {
+        const firstErr = last.results?.find((x) => x.error)?.error;
+        setScoreError(
+          firstErr ||
+            "Could not score resumes. Check CURSOR_API_KEY / OPENAI_API_KEY and resume files."
+        );
+        setScoreNote(null);
+      } else {
+        setScoreNote(null);
+      }
+    } catch (err) {
+      setScoreError(err instanceof Error ? err.message : "Scoring failed.");
+      setScoreNote(null);
+    } finally {
+      setScoring(false);
+    }
+  }, [load]);
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then((d) => {
-        setCandidates((d.candidates ?? []) as DashboardCandidate[]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    void (async () => {
+      try {
+        const list = await load();
+        const needsScore = list.some(
+          (c) => c.resumeMatchScore == null && c.status !== "rejected"
+        );
+        if (needsScore && !autoScoreStarted.current) {
+          autoScoreStarted.current = true;
+          await runScoring();
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [load, runScoring]);
 
   const jobs = useMemo(
     () => [...new Set(candidates.map((c) => c.jobTitle).filter(Boolean))].sort(),
@@ -105,10 +162,32 @@ export default function RankingPage() {
             Ranked by AI resume match and interview scores — open a profile for full details.
           </p>
         </div>
-        <p className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-          {ranked.length} candidate{ranked.length === 1 ? "" : "s"}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={scoring || loading}
+            onClick={() => void runScoring()}
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+          >
+            {scoring ? "Scoring…" : "Score unscored resumes"}
+          </button>
+          <p className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+            {ranked.length} candidate{ranked.length === 1 ? "" : "s"}
+          </p>
+        </div>
       </div>
+
+      {(scoreNote || scoreError) && (
+        <p
+          className={`mt-4 rounded-xl border px-3 py-2 text-sm ${
+            scoreError
+              ? "border-rose-200 bg-rose-50 text-rose-800"
+              : "border-sky-200 bg-sky-50 text-sky-900"
+          }`}
+        >
+          {scoreError || scoreNote}
+        </p>
+      )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
@@ -201,8 +280,16 @@ export default function RankingPage() {
                     </p>
                   )}
                   <div className="mt-4 space-y-2">
-                    <ScoreMeter label="Resume match" score={c.resumeMatchScore} />
-                    <ScoreMeter label="AI interview" score={c.interviewScore} />
+                    <ScoreMeter
+                      label="Resume match"
+                      score={c.resumeMatchScore}
+                      emptyLabel={scoring ? "…" : "—"}
+                    />
+                    <ScoreMeter
+                      label="AI interview"
+                      score={c.interviewScore}
+                      emptyLabel="Pending"
+                    />
                   </div>
                   {(c.skills?.length ?? 0) > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -309,8 +396,16 @@ export default function RankingPage() {
                     </div>
 
                     <div className="w-full shrink-0 space-y-2 lg:w-56">
-                      <ScoreMeter label="Resume match" score={c.resumeMatchScore} />
-                      <ScoreMeter label="AI interview" score={c.interviewScore} />
+                      <ScoreMeter
+                        label="Resume match"
+                        score={c.resumeMatchScore}
+                        emptyLabel={scoring ? "…" : "—"}
+                      />
+                      <ScoreMeter
+                        label="AI interview"
+                        score={c.interviewScore}
+                        emptyLabel="Pending"
+                      />
                       <div className="flex flex-wrap gap-2 pt-1">
                         <Link
                           href={`/dashboard/candidates/${c.applicationId}`}

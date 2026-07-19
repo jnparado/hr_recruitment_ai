@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { scoreAllUnscored } from "@/app/dashboard/_lib/score-unscored";
 import type { DashboardCandidate } from "@/lib/types";
 
 function scoreTone(score: number | null) {
@@ -23,14 +24,22 @@ function statusChip(status: string) {
   return "bg-slate-100 text-slate-600";
 }
 
-function ScoreMeter({ label, score }: { label: string; score: number | null }) {
+function ScoreMeter({
+  label,
+  score,
+  emptyLabel = "—",
+}: {
+  label: string;
+  score: number | null;
+  emptyLabel?: string;
+}) {
   const tone = scoreTone(score);
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
         <span className="text-slate-500">{label}</span>
         <span className={`font-semibold ${tone.text}`}>
-          {score != null ? `${score}/100` : "—"}
+          {score != null ? `${score}/100` : emptyLabel}
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -77,6 +86,8 @@ function ActionBtn({
 export default function ApplicantsPage() {
   const [candidates, setCandidates] = useState<DashboardCandidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scoring, setScoring] = useState(false);
+  const [scoreNote, setScoreNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [scheduleFor, setScheduleFor] = useState<string | null>(null);
@@ -85,25 +96,65 @@ export default function ApplicantsPage() {
   const [query, setQuery] = useState("");
   const [jobFilter, setJobFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
+  const autoScoreStarted = useRef(false);
 
-  async function load() {
-    setLoading(true);
+  const load = useCallback(async () => {
     setError(null);
+    const r = await fetch("/api/dashboard");
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || "Failed to load applicants.");
+    setCandidates(d.candidates ?? []);
+    return (d.candidates ?? []) as DashboardCandidate[];
+  }, []);
+
+  const runScoring = useCallback(async () => {
+    setScoring(true);
+    setError(null);
+    setScoreNote("Scoring unscored resumes with AI…");
     try {
-      const r = await fetch("/api/dashboard");
-      const d = await r.json();
-      if (!r.ok || d.error) throw new Error(d.error || "Failed to load applicants.");
-      setCandidates(d.candidates ?? []);
+      const { totalScored, last } = await scoreAllUnscored(async () => {
+        await load();
+      });
+      await load();
+      if (totalScored > 0) {
+        setScoreNote(`Scored ${totalScored} resume${totalScored === 1 ? "" : "s"}.`);
+      } else if ((last.attempted ?? 0) > 0) {
+        const firstErr = last.results?.find((x) => x.error)?.error;
+        setError(
+          firstErr ||
+            "Could not score resumes. Check CURSOR_API_KEY / OPENAI_API_KEY and resume files."
+        );
+        setScoreNote(null);
+      } else {
+        setScoreNote(null);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load applicants.");
+      setError(err instanceof Error ? err.message : "Scoring failed.");
+      setScoreNote(null);
     } finally {
-      setLoading(false);
+      setScoring(false);
     }
-  }
+  }, [load]);
 
   useEffect(() => {
-    void load();
-  }, []);
+    void (async () => {
+      setLoading(true);
+      try {
+        const list = await load();
+        const needsScore = list.some(
+          (c) => c.resumeMatchScore == null && c.status !== "rejected"
+        );
+        if (needsScore && !autoScoreStarted.current) {
+          autoScoreStarted.current = true;
+          await runScoring();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load applicants.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [load, runScoring]);
 
   const jobs = useMemo(
     () => [...new Set(candidates.map((c) => c.jobTitle).filter(Boolean))].sort(),
@@ -178,13 +229,7 @@ export default function ApplicantsPage() {
       const r = await fetch(`/api/applications/${applicationId}/score`, { method: "POST" });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Scoring failed.");
-      setCandidates((prev) =>
-        prev.map((c) =>
-          c.applicationId === applicationId
-            ? { ...c, resumeMatchScore: d.matchScore, status: "scored" }
-            : c
-        )
-      );
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Scoring failed.");
     } finally {
@@ -253,14 +298,47 @@ export default function ApplicantsPage() {
             reject, or schedule a human interview.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          Refresh
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={scoring || loading}
+            onClick={() => void runScoring()}
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
+          >
+            {scoring ? "Scoring…" : "Score unscored resumes"}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              void (async () => {
+                setLoading(true);
+                try {
+                  await load();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Failed to load.");
+                } finally {
+                  setLoading(false);
+                }
+              })()
+            }
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {(scoreNote || error) && (
+        <p
+          className={`mt-4 rounded-xl border px-3 py-2 text-sm ${
+            error
+              ? "border-rose-200 bg-rose-50 text-rose-800"
+              : "border-sky-200 bg-sky-50 text-sky-900"
+          }`}
+        >
+          {error || scoreNote}
+        </p>
+      )}
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
@@ -327,12 +405,6 @@ export default function ApplicantsPage() {
           </select>
         </div>
       </div>
-
-      {error && (
-        <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-          {error}
-        </div>
-      )}
 
       {loading && <p className="mt-8 text-sm text-slate-500">Loading applicants…</p>}
 
@@ -522,8 +594,16 @@ export default function ApplicantsPage() {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                     AI scores
                   </p>
-                  <ScoreMeter label="Resume match" score={c.resumeMatchScore} />
-                  <ScoreMeter label="AI interview" score={c.interviewScore} />
+                  <ScoreMeter
+                    label="Resume match"
+                    score={c.resumeMatchScore}
+                    emptyLabel={scoring || busyId === c.applicationId ? "…" : "—"}
+                  />
+                  <ScoreMeter
+                    label="AI interview"
+                    score={c.interviewScore}
+                    emptyLabel="Pending"
+                  />
                   {c.recommendation && (
                     <p className="text-xs text-slate-600">
                       Recommendation:{" "}
