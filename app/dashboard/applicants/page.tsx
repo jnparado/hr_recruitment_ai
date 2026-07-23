@@ -16,12 +16,24 @@ function scoreTone(score: number | null) {
 }
 
 function statusChip(status: string) {
-  const s = status.replace(/_/g, " ");
-  if (status === "shortlisted") return "bg-emerald-100 text-emerald-800";
-  if (status === "rejected") return "bg-rose-100 text-rose-800";
-  if (status.includes("interview")) return "bg-indigo-100 text-indigo-800";
-  if (status === "scored" || status === "parsed") return "bg-sky-100 text-sky-800";
+  const s = normalizeStatus(status);
+  if (s === "shortlisted") return "bg-emerald-100 text-emerald-800";
+  if (s === "rejected") return "bg-rose-100 text-rose-800";
+  if (s.includes("interview")) return "bg-indigo-100 text-indigo-800";
+  if (s === "scored" || s === "parsed") return "bg-sky-100 text-sky-800";
   return "bg-slate-100 text-slate-600";
+}
+
+function normalizeStatus(status: string | null | undefined) {
+  return String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function isRejected(status: string | null | undefined) {
+  const s = normalizeStatus(status);
+  return s === "rejected" || s === "reject";
 }
 
 function ScoreMeter({
@@ -150,7 +162,7 @@ export default function ApplicantsPage() {
       try {
         const list = await load();
         const needsScore = list.some(
-          (c) => c.resumeMatchScore == null && c.status !== "rejected"
+          (c) => c.resumeMatchScore == null && !isRejected(c.status)
         );
         if (needsScore && !autoScoreStarted.current) {
           autoScoreStarted.current = true;
@@ -172,13 +184,14 @@ export default function ApplicantsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return candidates.filter((c) => {
-      if (statusFilter === "active" && c.status === "rejected") return false;
-      if (statusFilter === "rejected" && c.status !== "rejected") return false;
+      const status = normalizeStatus(c.status);
+      if (statusFilter === "active" && isRejected(status)) return false;
+      if (statusFilter === "rejected" && !isRejected(status)) return false;
       if (
         statusFilter !== "all" &&
         statusFilter !== "active" &&
         statusFilter !== "rejected" &&
-        c.status !== statusFilter
+        status !== normalizeStatus(statusFilter)
       ) {
         return false;
       }
@@ -192,13 +205,13 @@ export default function ApplicantsPage() {
   }, [candidates, jobFilter, statusFilter, query]);
 
   const stats = useMemo(() => {
-    const active = candidates.filter((c) => c.status !== "rejected");
+    const active = candidates.filter((c) => !isRejected(c.status));
     return {
       total: active.length,
       scored: active.filter((c) => c.resumeMatchScore != null).length,
-      shortlisted: active.filter((c) => c.status === "shortlisted").length,
+      shortlisted: active.filter((c) => normalizeStatus(c.status) === "shortlisted").length,
       interviewed: active.filter((c) => c.interviewScore != null).length,
-      rejected: candidates.filter((c) => c.status === "rejected").length,
+      rejected: candidates.filter((c) => isRejected(c.status)).length,
     };
   }, [candidates]);
 
@@ -207,6 +220,15 @@ export default function ApplicantsPage() {
     action: "shortlist" | "reject" | "schedule",
     extra?: Record<string, string | number>
   ) {
+    if (action === "reject") {
+      const name =
+        candidates.find((c) => c.applicationId === applicationId)?.candidateName ||
+        "this candidate";
+      if (!window.confirm(`Reject ${name}? They will move out of the Active list.`)) {
+        return;
+      }
+    }
+
     setBusyId(applicationId);
     setError(null);
     try {
@@ -218,11 +240,24 @@ export default function ApplicantsPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Action failed.");
       if (action === "schedule") setScheduleFor(null);
+
+      const nextStatus =
+        action === "reject"
+          ? "rejected"
+          : action === "shortlist"
+            ? "shortlisted"
+            : d.status || "interview_scheduled";
+
       setCandidates((prev) =>
         prev.map((c) =>
-          c.applicationId === applicationId ? { ...c, status: d.status || c.status } : c
+          c.applicationId === applicationId ? { ...c, status: nextStatus } : c
         )
       );
+
+      // Keep Active view — rejected cards disappear immediately
+      if (action === "reject" && statusFilter === "active") {
+        // status already updated; filter hides them
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Action failed.");
     } finally {
@@ -355,22 +390,30 @@ export default function ApplicantsPage() {
       )}
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {[
-          { label: "Active", value: stats.total },
-          { label: "AI scored", value: stats.scored },
-          { label: "Interviewed", value: stats.interviewed },
-          { label: "Shortlisted", value: stats.shortlisted },
-          { label: "Rejected", value: stats.rejected },
-        ].map((s) => (
-          <div
+        {(
+          [
+            { label: "Active", value: stats.total, filter: "active" },
+            { label: "AI scored", value: stats.scored, filter: "active" },
+            { label: "Interviewed", value: stats.interviewed, filter: "active" },
+            { label: "Shortlisted", value: stats.shortlisted, filter: "shortlisted" },
+            { label: "Rejected", value: stats.rejected, filter: "rejected" },
+          ] as const
+        ).map((s) => (
+          <button
             key={s.label}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+            type="button"
+            onClick={() => setStatusFilter(s.filter)}
+            className={`rounded-xl border px-4 py-3 text-left shadow-sm transition ${
+              statusFilter === s.filter
+                ? "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-200"
+                : "border-slate-200 bg-white hover:border-emerald-200"
+            }`}
           >
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               {s.label}
             </p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{s.value}</p>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -409,13 +452,14 @@ export default function ApplicantsPage() {
             <option value="active">Active (hide rejected)</option>
             <option value="rejected">Rejected only</option>
             <option value="all">All statuses</option>
-            {[...new Set(candidates.map((c) => c.status))]
-              .filter((s) => s !== "rejected")
+            {[...new Set(candidates.map((c) => normalizeStatus(c.status)))]
+              .filter((s) => s && !isRejected(s) && s !== "shortlisted")
               .map((s) => (
                 <option key={s} value={s}>
                   {s.replace(/_/g, " ")}
                 </option>
               ))}
+            <option value="shortlisted">shortlisted</option>
           </select>
         </div>
       </div>
@@ -515,7 +559,7 @@ export default function ApplicantsPage() {
                         {busy ? "Scoring…" : "Score resume"}
                       </ActionBtn>
                     )}
-                    {c.status !== "rejected" && (
+                    {!isRejected(c.status) && (
                       <ActionBtn
                         disabled={busy}
                         tone="indigo"
@@ -524,7 +568,8 @@ export default function ApplicantsPage() {
                         Invite to AI Interview
                       </ActionBtn>
                     )}
-                    {c.status !== "rejected" && c.status !== "shortlisted" && (
+                    {!isRejected(c.status) &&
+                      normalizeStatus(c.status) !== "shortlisted" && (
                       <>
                         <ActionBtn
                           disabled={busy}
@@ -542,11 +587,11 @@ export default function ApplicantsPage() {
                         </ActionBtn>
                       </>
                     )}
-                    {(c.status === "shortlisted" ||
-                      c.status === "scored" ||
-                      c.status === "ai_interview_invited" ||
+                    {(normalizeStatus(c.status) === "shortlisted" ||
+                      normalizeStatus(c.status) === "scored" ||
+                      normalizeStatus(c.status) === "ai_interview_invited" ||
                       c.interviewScore != null) &&
-                      c.status !== "rejected" && (
+                      !isRejected(c.status) && (
                         <ActionBtn
                           disabled={busy}
                           tone="primary"

@@ -1,9 +1,13 @@
 import { appBaseUrl } from "@/lib/app-url";
 import { sendAppEmail } from "@/lib/email";
 
-/** Triggers the n8n workflow when a new application is received. */
+/** Triggers the n8n workflow when a new application is received.
+ * Primary payload matches Postman / n8n Webhook contract:
+ * { application_id, candidate_id, job_id, resume_url }
+ */
 export async function triggerN8nApplication(payload: {
   applicationId: string;
+  candidateId?: string | null;
   jobId: string;
   jobTitle: string;
   applicantName: string;
@@ -16,6 +20,14 @@ export async function triggerN8nApplication(payload: {
 
   const base = appBaseUrl();
 
+  // Contract body (snake_case) — what your n8n Webhook + Postman expect
+  const contract = {
+    application_id: payload.applicationId,
+    candidate_id: payload.candidateId || null,
+    job_id: payload.jobId,
+    resume_url: payload.resumeUrl,
+  };
+
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -26,28 +38,22 @@ export async function triggerN8nApplication(payload: {
           : {}),
       },
       body: JSON.stringify({
+        ...contract,
+        // CamelCase aliases + extras for optional richer workflows
         event: "application.received",
         timestamp: new Date().toISOString(),
-        ...payload,
-        /** n8n should call this to run: Get App → Download → Parse → Match → Notify */
+        applicationId: payload.applicationId,
+        candidateId: payload.candidateId || null,
+        jobId: payload.jobId,
+        jobTitle: payload.jobTitle,
+        applicantName: payload.applicantName,
+        applicantEmail: payload.applicantEmail,
+        resumeUrl: payload.resumeUrl,
+        resumePath: payload.resumePath,
         processUrl: `${base}/api/webhooks/n8n/process`,
         rankUrl: `${base}/api/webhooks/n8n/rank`,
         scheduleUrl: `${base}/api/webhooks/n8n/schedule`,
         notifyUrl: `${base}/api/webhooks/n8n/notify`,
-        flow: [
-          "Career Website",
-          "Webhook",
-          "Get Application from Supabase",
-          "Download Resume",
-          "Extract PDF Text",
-          "OpenAI Resume Parser",
-          "Structured Output Parser",
-          "Update Candidate in Supabase",
-          "Get Job Description",
-          "OpenAI Candidate Matcher",
-          "Update Match Score",
-          "Notify Recruiter",
-        ],
         voiceInterviewUrl: `${base}/call/${payload.applicationId}`,
         trackUrl: `${base}/careers/track?id=${encodeURIComponent(payload.applicationId)}`,
         confirmationEmail: {

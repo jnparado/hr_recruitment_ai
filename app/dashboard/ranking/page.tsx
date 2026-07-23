@@ -27,6 +27,14 @@ function compositeScore(c: DashboardCandidate) {
   return c.resumeMatchScore ?? c.interviewScore ?? null;
 }
 
+function isRejected(status: string | null | undefined) {
+  const s = String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+  return s === "rejected" || s === "reject";
+}
+
 function ScoreMeter({
   label,
   score,
@@ -107,7 +115,7 @@ export default function RankingPage() {
       try {
         const list = await load();
         const needsScore = list.some(
-          (c) => c.resumeMatchScore == null && c.status !== "rejected"
+          (c) => c.resumeMatchScore == null && !isRejected(c.status)
         );
         if (needsScore && !autoScoreStarted.current) {
           autoScoreStarted.current = true;
@@ -127,7 +135,7 @@ export default function RankingPage() {
   const ranked = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = candidates.filter((c) => {
-      if (c.status === "rejected") return false;
+      if (isRejected(c.status)) return false;
       if (jobFilter !== "all" && c.jobTitle !== jobFilter) return false;
       if (!q) return true;
       const hay = [c.candidateName, c.email, c.jobTitle, c.currentRole, ...(c.skills || [])]

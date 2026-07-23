@@ -50,6 +50,7 @@ export async function POST(request: Request) {
   }
 
   let applicationId: string;
+  let candidateId: string | null = null;
   try {
     const app = await createApplication({
       jobId: job.id.startsWith("seed-") ? null : job.id,
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
       resumeUrl: storedResume.storageUrl,
     });
     applicationId = app.id;
+    candidateId = app.candidateId;
   } catch (err) {
     return Response.json(
       {
@@ -72,9 +74,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Fire n8n webhook (external automation can call processUrl).
+  // Fire n8n webhook — body matches Postman contract:
+  // { application_id, candidate_id, job_id, resume_url }
   const n8n = await triggerN8nApplication({
     applicationId,
+    candidateId,
     jobId: job.id,
     jobTitle: job.title,
     applicantName,
@@ -112,6 +116,7 @@ export async function POST(request: Request) {
   return Response.json({
     success: true,
     applicationId,
+    candidateId,
     resumeUrl: storedResume.storageUrl,
     voiceInterviewUrl: `/call/${applicationId}`,
     voiceInterviewAbsoluteUrl: `${origin}/call/${applicationId}`,
@@ -119,6 +124,12 @@ export async function POST(request: Request) {
     confirmationEmail,
     n8nTriggered: n8n.triggered,
     n8nError: n8n.error,
+    n8nPayload: {
+      application_id: applicationId,
+      candidate_id: candidateId,
+      job_id: job.id,
+      resume_url: storedResume.storageUrl,
+    },
     message:
       "Application received! A confirmation email is on its way. You can track your status anytime.",
   });

@@ -133,7 +133,7 @@ export async function createApplication(input: {
   applicantEmail: string;
   resumePath: string;
   resumeUrl: string;
-}): Promise<DbApplication> {
+}): Promise<DbApplication & { candidateId: string | null }> {
   const { data, error } = await supabaseAdmin()
     .from("applications")
     .insert({
@@ -150,9 +150,10 @@ export async function createApplication(input: {
   if (error) throw new Error(error.message);
 
   const app = data as DbApplication;
+  let candidateId: string | null = null;
   // Stub candidate row immediately; AI parsing enriches it later.
   try {
-    await ensureCandidateStub(app);
+    candidateId = await ensureCandidateStub(app);
   } catch (err) {
     console.warn("[db] ensureCandidateStub failed (application still saved):", err);
   }
@@ -167,7 +168,7 @@ export async function createApplication(input: {
   } catch (err) {
     console.warn("[db] createRecruiterNotification failed:", err);
   }
-  return app;
+  return { ...app, candidateId };
 }
 
 /** Minimal candidates row from application form data (before resume parse). */
@@ -175,46 +176,62 @@ export async function ensureCandidateStub(application: {
   id: string;
   applicant_name: string;
   applicant_email: string;
-}): Promise<void> {
+}): Promise<string | null> {
   const { data: existing } = await supabaseAdmin()
     .from("candidates")
     .select("id")
     .eq("application_id", application.id)
     .maybeSingle();
-  if (existing) return;
+  if (existing?.id) return existing.id as string;
 
   // Prefer full schema; fall back to name/email only if columns are missing.
-  const full = await supabaseAdmin().from("candidates").insert({
-    application_id: application.id,
-    name: application.applicant_name,
-    email: application.applicant_email,
-    phone: "",
-    current_role: "",
-    years_of_experience: 0,
-    skills: [],
-    experience: [],
-    education: [],
-    certificates: [],
-  });
-
-  if (!full.error) return;
-  if (/duplicate|unique/i.test(full.error.message)) return;
-
-  if (/current_role|schema cache|column/i.test(full.error.message)) {
-    const minimal = await supabaseAdmin().from("candidates").insert({
+  const full = await supabaseAdmin()
+    .from("candidates")
+    .insert({
       application_id: application.id,
       name: application.applicant_name,
       email: application.applicant_email,
-    });
+      phone: "",
+      current_role: "",
+      years_of_experience: 0,
+      skills: [],
+      experience: [],
+      education: [],
+      certificates: [],
+    })
+    .select("id")
+    .single();
+
+  if (!full.error && full.data?.id) return full.data.id as string;
+  if (full.error && /duplicate|unique/i.test(full.error.message)) {
+    const again = await supabaseAdmin()
+      .from("candidates")
+      .select("id")
+      .eq("application_id", application.id)
+      .maybeSingle();
+    return (again.data?.id as string) || null;
+  }
+
+  if (full.error && /current_role|schema cache|column/i.test(full.error.message)) {
+    const minimal = await supabaseAdmin()
+      .from("candidates")
+      .insert({
+        application_id: application.id,
+        name: application.applicant_name,
+        email: application.applicant_email,
+      })
+      .select("id")
+      .single();
     if (minimal.error && !/duplicate|unique/i.test(minimal.error.message)) {
       throw new Error(
         `${minimal.error.message} — run supabase/migrations/20260719010000_candidates_columns.sql in Supabase SQL Editor.`
       );
     }
-    return;
+    return (minimal.data?.id as string) || null;
   }
 
-  throw new Error(full.error.message);
+  if (full.error) throw new Error(full.error.message);
+  return null;
 }
 
 /** Backfill stubs for applications that never got a candidates row (parse failed / old applies). */

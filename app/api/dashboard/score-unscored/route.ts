@@ -14,9 +14,13 @@ export async function POST() {
 
   try {
     const candidates = await listDashboardCandidates();
-    const unscored = candidates.filter(
-      (c) => c.resumeMatchScore == null && c.status !== "rejected"
-    );
+    const unscored = candidates.filter((c) => {
+      const status = String(c.status || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
+      return c.resumeMatchScore == null && status !== "rejected" && status !== "reject";
+    });
 
     const results: {
       applicationId: string;

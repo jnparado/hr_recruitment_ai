@@ -1,0 +1,79 @@
+{
+  "info": {
+    "name": "HR Recruitment — Candidate Application Webhook",
+    "description": "Matches the Career Website → n8n webhook contract used by POST /api/apply.\n\nPrimary body fields:\n- application_id\n- candidate_id\n- job_id\n- resume_url",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "n8nWebhookUrl",
+      "value": "https://jesonparado.app.n8n.cloud/webhook-test/candidate-application"
+    },
+    {
+      "key": "n8nWebhookSecret",
+      "value": ""
+    },
+    {
+      "key": "application_id",
+      "value": "7097779b-0347-49d8-b469-8ff5ea74b483"
+    },
+    {
+      "key": "candidate_id",
+      "value": "26795ebc-05d4-4302-bccd-518909ddf5ca"
+    },
+    {
+      "key": "job_id",
+      "value": "64460e72-c759-4d7a-b076-d138c85650ae"
+    },
+    {
+      "key": "resume_url",
+      "value": "https://nbkzjlieoviclolmyvhj.supabase.co/storage/v1/object/public/upload_resume/applications/64460e72-c759-4d7a-b076-d138c85650ae/1784466749196-Stockholm-Resume-Template-Simple.pdf"
+    }
+  ],
+  "item": [
+    {
+      "name": "n8n — candidate-application (contract)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Webhook-Secret",
+            "value": "{{n8nWebhookSecret}}",
+            "description": "Optional — set if N8N_WEBHOOK_SECRET is configured"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"application_id\": \"{{application_id}}\",\n  \"candidate_id\": \"{{candidate_id}}\",\n  \"job_id\": \"{{job_id}}\",\n  \"resume_url\": \"{{resume_url}}\"\n}"
+        },
+        "url": "{{n8nWebhookUrl}}",
+        "description": "Exact contract body sent by the app on Career Website apply (plus extra fields). Use Listen for test event in n8n while testing."
+      }
+    },
+    {
+      "name": "n8n — candidate-application (full app payload)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Webhook-Secret",
+            "value": "{{n8nWebhookSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"application_id\": \"{{application_id}}\",\n  \"candidate_id\": \"{{candidate_id}}\",\n  \"job_id\": \"{{job_id}}\",\n  \"resume_url\": \"{{resume_url}}\",\n  \"event\": \"application.received\",\n  \"applicationId\": \"{{application_id}}\",\n  \"candidateId\": \"{{candidate_id}}\",\n  \"jobId\": \"{{job_id}}\",\n  \"resumeUrl\": \"{{resume_url}}\",\n  \"processUrl\": \"https://hr-recruitment-ai.vercel.app/api/webhooks/n8n/process\"\n}"
+        },
+        "url": "{{n8nWebhookUrl}}"
+      }
+    }
+  ]
+}
